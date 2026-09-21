@@ -1,22 +1,7 @@
 import { type ToolResultData, TypedToolError } from '@abc-protocol/sdk'
 import type { WorkerClient } from '../client.js'
 import type { WorkerDeps } from '../deps.js'
-import type { DirEntry } from './list.js'
-import { walkTree } from './list.js'
-import {
-  capLines,
-  humanSize,
-  MAX_RESULT_BYTES,
-  MAX_RESULT_LINES,
-  truncationNote,
-} from './output.js'
-import {
-  baseName,
-  numArg,
-  requireArg,
-  strArg,
-} from './shared.js'
-import { numberLines, joinFileLines, toFileLines, windowLines } from './text.js'
+import { tr } from '../i18n.js'
 import { unifiedDiff } from './diff.js'
 import {
   formatRanges,
@@ -26,7 +11,17 @@ import {
   recordSeen,
   seenFor,
 } from './edit-state.js'
-import { tr } from '../i18n.js'
+import type { DirEntry } from './list.js'
+import { walkTree } from './list.js'
+import {
+  capLines,
+  humanSize,
+  MAX_RESULT_BYTES,
+  MAX_RESULT_LINES,
+  truncationNote,
+} from './output.js'
+import { baseName, numArg, requireArg, strArg } from './shared.js'
+import { joinFileLines, numberLines, toFileLines, windowLines } from './text.js'
 
 /** Everything a file-tool handler needs at call time. */
 export interface FileCtx {
@@ -73,7 +68,11 @@ export async function readFile(
   if (win.truncated || win.start > 0) {
     content +=
       '\n' +
-      tr(ctx.locale ?? 'en', 'showingLines', { start: win.start + 1, end, total: win.total }) +
+      tr(ctx.locale ?? 'en', 'showingLines', {
+        start: win.start + 1,
+        end,
+        total: win.total,
+      }) +
       (win.truncated ? tr(ctx.locale ?? 'en', 'moreLinesAvailable') : '')
   }
   // Record exactly the lines DISPLAYED (after the byte/line cap), so a later
@@ -82,7 +81,8 @@ export async function readFile(
   // empty file.
   {
     const state = await ctx.deps.loadEditState(ctx.tenant, ctx.session)
-    const ranges = shown > 0 ? [[win.start + 1, win.start + shown] as const] : []
+    const ranges =
+      shown > 0 ? [[win.start + 1, win.start + shown] as const] : []
     const next = recordSeen(
       state,
       path,
@@ -157,7 +157,12 @@ export async function writeFile(
   })
   return {
     content: body === '' ? summary : `${summary}\n\n${body}`,
-    data: { path, bytes: read.content.length, lines: file.lines.length, total_lines: file.lines.length },
+    data: {
+      path,
+      bytes: read.content.length,
+      lines: file.lines.length,
+      total_lines: file.lines.length,
+    },
   }
 }
 
@@ -193,14 +198,19 @@ export async function editFile(
   const state = await ctx.deps.loadEditState(ctx.tenant, ctx.session)
   const seen = seenFor(state, path)
   if (seen === null) {
-    throw new TypedToolError('permission_denied', tr(locale, 'editNeedsRead', { path }))
+    throw new TypedToolError(
+      'permission_denied',
+      tr(locale, 'editNeedsRead', { path }),
+    )
   }
 
   const read = await ctx.client.fileRead({ path })
   if (hashBytes(read.content) !== seen.sha256) {
     throw new TypedToolError('retryable', tr(locale, 'editStaleRead', { path }))
   }
-  const current = new TextDecoder('utf-8', { fatal: false }).decode(read.content)
+  const current = new TextDecoder('utf-8', { fatal: false }).decode(
+    read.content,
+  )
   const file = toFileLines(current)
   const total = file.lines.length
   const inserted = content === '' ? [] : toFileLines(content).lines
@@ -234,7 +244,10 @@ export async function editFile(
     )
   }
 
-  const out = joinFileLines({ lines: next, trailingNewline: file.trailingNewline })
+  const out = joinFileLines({
+    lines: next,
+    trailingNewline: file.trailingNewline,
+  })
   if (out === current) {
     return { content: tr(locale, 'editNoChanges', { path }) }
   }
@@ -257,7 +270,12 @@ export async function editFile(
   const capped = capLines(diff.text.split('\n'))
   let body = capped.kept.join('\n')
   if (capped.truncated) {
-    body += truncationNote(capped, capped.kept.length, diff.text.split('\n').length, locale)
+    body += truncationNote(
+      capped,
+      capped.kept.length,
+      diff.text.split('\n').length,
+      locale,
+    )
   }
   return {
     content: `${summary}\n\n${body}`,
@@ -303,7 +321,13 @@ export async function listFiles(
     lines.push(`${indent}${marker} ${row.path}  ${size}`)
   }
   for (const om of walk.omissions) {
-    lines.push(tr(ctx.locale ?? 'en', 'omittedEntries', { path: om.path, count: om.count, limit }))
+    lines.push(
+      tr(ctx.locale ?? 'en', 'omittedEntries', {
+        path: om.path,
+        count: om.count,
+        limit,
+      }),
+    )
   }
   if (walk.rows.length === 0) {
     return {
@@ -315,7 +339,13 @@ export async function listFiles(
   }
   const capped = capLines(lines, MAX_RESULT_LINES)
   let content = capped.kept.join('\n')
-  if (capped.truncated) content += truncationNote(capped, capped.kept.length, lines.length, ctx.locale)
+  if (capped.truncated)
+    content += truncationNote(
+      capped,
+      capped.kept.length,
+      lines.length,
+      ctx.locale,
+    )
   return { content, data: { rows: capped.kept.length } }
 }
 

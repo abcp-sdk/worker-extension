@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { walkTree, type DirEntry, type ListDir } from '../src/tools/list.js'
+import { type DirEntry, type ListDir, walkTree } from '../src/tools/list.js'
 
-function tree(spec: Record<string, DirEntry[]>, files: Record<string, DirEntry> = {}): ListDir {
+function tree(
+  spec: Record<string, DirEntry[]>,
+  files: Record<string, DirEntry> = {},
+): ListDir {
   return async (path: string) => {
     if (spec[path] !== undefined) return { isDir: true, entries: spec[path]! }
-    if (files[path] !== undefined) return { isDir: false, entries: [files[path]!] }
+    if (files[path] !== undefined)
+      return { isDir: false, entries: [files[path]!] }
     throw new Error(`no such path: ${path}`)
   }
 }
 
-const dir = (path: string, isDir = true, size = 0): DirEntry => ({ path, isDir, size })
+const dir = (path: string, isDir = true, size = 0): DirEntry => ({
+  path,
+  isDir,
+  size,
+})
 
 describe('walkTree', () => {
   it('emits level order, parents before children', async () => {

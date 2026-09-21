@@ -37,7 +37,11 @@ export function hashBytes(data: Uint8Array): string {
 }
 
 /** Merge `[s, e]` into a sorted, non-overlapping, coalesced range list. */
-export function mergeRanges(ranges: LineRange[], s: number, e: number): LineRange[] {
+export function mergeRanges(
+  ranges: LineRange[],
+  s: number,
+  e: number,
+): LineRange[] {
   if (e < s) return ranges.map(r => [...r] as LineRange)
   const all = [...ranges.map(r => [...r] as LineRange), [s, e] as LineRange]
   all.sort((a, b) => a[0] - b[0] || a[1] - b[1])
@@ -54,7 +58,11 @@ export function mergeRanges(ranges: LineRange[], s: number, e: number): LineRang
 }
 
 /** True when every line in `[s, e]` is covered by `ranges`. `e < s` = empty. */
-export function rangesCover(ranges: LineRange[], s: number, e: number): boolean {
+export function rangesCover(
+  ranges: LineRange[],
+  s: number,
+  e: number,
+): boolean {
   if (e < s) return true
   for (let line = s; line <= e; line++) {
     if (!ranges.some(r => line >= r[0] && line <= r[1])) return false
@@ -65,9 +73,7 @@ export function rangesCover(ranges: LineRange[], s: number, e: number): boolean 
 /** Compact human rendering of seen ranges, e.g. `1-50, 100-200` (or `none`). */
 export function formatRanges(ranges: LineRange[]): string {
   if (ranges.length === 0) return 'none'
-  return ranges
-    .map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`))
-    .join(', ')
+  return ranges.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(', ')
 }
 
 /** Record that lines `[s, e]` of `path` were seen, with the file's hash. */

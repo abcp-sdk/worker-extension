@@ -1,19 +1,9 @@
-import { TypedToolError } from '@abc-protocol/sdk'
+import { numArg, strArg, TypedToolError } from '@abc-protocol/sdk'
 import { tr } from '../i18n.js'
 
-/** Read a string tool argument (missing/typed wrong = ""). */
-export function strArg(args: Record<string, unknown>, key: string): string {
-  const v = args[key]
-  return typeof v === 'string' ? v : ''
-}
-
-export function numArg(
-  args: Record<string, unknown>,
-  key: string,
-): number | undefined {
-  const v = args[key]
-  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
-}
+// Argument-coercion primitives come from the SDK's extension-kit (they used
+// to be a per-repo copy that drifted across extensions).
+export { numArg, strArg } from '@abc-protocol/sdk'
 
 export function requireArg(
   args: Record<string, unknown>,
@@ -22,7 +12,10 @@ export function requireArg(
 ): string {
   const v = strArg(args, key)
   if (v === '') {
-    throw new TypedToolError('invalid_argument', tr(locale, 'argRequired', { key }))
+    throw new TypedToolError(
+      'invalid_argument',
+      tr(locale, 'argRequired', { key }),
+    )
   }
   return v
 }
@@ -63,4 +56,15 @@ export function baseName(path: string): string {
 export function render(value: unknown): string {
   if (typeof value === 'string') return value
   return JSON.stringify(value, null, 2)
+}
+
+/** Bare domain of a URL: drops scheme, port, path (e.g. `wm-x.ns.svc.cluster.local`). */
+export function domainOf(url: string): string {
+  const noScheme = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+  const slash = noScheme.indexOf('/')
+  const hostPort = slash >= 0 ? noScheme.slice(0, slash) : noScheme
+  const m = /^(\[[^\]]+\])(?::\d+)?$/.exec(hostPort)
+  if (m) return m[1]!
+  const colon = hostPort.lastIndexOf(':')
+  return colon >= 0 ? hostPort.slice(0, colon) : hostPort
 }

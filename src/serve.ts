@@ -1,4 +1,4 @@
-import { Extension, type Bus, connectNatsBus } from '@abc-protocol/sdk'
+import { type Bus, connectNatsBus, Extension } from '@abc-protocol/sdk'
 import { createWorkerConfig } from './index.js'
 
 export interface ServeWorkerOpts {

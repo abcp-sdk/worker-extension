@@ -53,17 +53,17 @@ const LCS_CELL_LIMIT = 4_000_000
 function lcsOps(a: ALine[], b: ALine[]): Op[] {
   const n = a.length
   const m = b.length
-  const dp: Int32Array[] = Array.from({ length: n + 1 }, () =>
-    new Int32Array(m + 1),
+  const dp: Int32Array[] = Array.from(
+    { length: n + 1 },
+    () => new Int32Array(m + 1),
   )
   for (let i = 1; i <= n; i++) {
     const row = dp[i]!
     const prev = dp[i - 1]!
     for (let j = 1; j <= m; j++) {
-      row[j] =
-        sameLine(a[i - 1]!, b[j - 1]!)
-          ? prev[j - 1]! + 1
-          : Math.max(prev[j]!, row[j - 1]!)
+      row[j] = sameLine(a[i - 1]!, b[j - 1]!)
+        ? prev[j - 1]! + 1
+        : Math.max(prev[j]!, row[j - 1]!)
     }
   }
   const ops: Op[] = []

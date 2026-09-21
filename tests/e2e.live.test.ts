@@ -1,7 +1,7 @@
-import { afterAll, describe, expect, it } from 'vitest'
 import { Agent, connectNatsBus, Extension } from '@abc-protocol/sdk'
-import { createWorkerConfig } from '../src/index.js'
+import { afterAll, describe, expect, it } from 'vitest'
 import { CONFIG } from '../src/config.js'
+import { createWorkerConfig } from '../src/index.js'
 
 /**
  * Live end-to-end against a REAL easyworker over a REAL NATS broker. Set:
@@ -52,25 +52,41 @@ maybe('live e2e: worker extension against a real easyworker', () => {
     await new Promise(r => setTimeout(r, 800))
 
     const call = async (tool: string, args: Record<string, unknown>) => {
-      const res = await agent.callTool(tenant, session, 'worker', tool, `call-${tool}-${Date.now()}`, args)
-      if (res.error) throw new Error(`${tool}: ${res.error.code}: ${res.error.message}`)
+      const res = await agent.callTool(
+        tenant,
+        session,
+        'worker',
+        tool,
+        `call-${tool}-${Date.now()}`,
+        args,
+      )
+      if (res.error)
+        throw new Error(`${tool}: ${res.error.code}: ${res.error.message}`)
       return res
     }
 
     const info = await call('info', {})
     expect(info.data).toMatchObject({ os: 'linux', arch: 'amd64' })
 
-    const exec = await call('exec', { command: 'echo hello-worker && printf "l1\\nl2\\n"' })
+    const exec = await call('exec', {
+      command: 'echo hello-worker && printf "l1\\nl2\\n"',
+    })
     expect(exec.content).toContain('hello-worker')
     expect(exec.data).toMatchObject({ state: 'done', exit_code: 0 })
 
-    await call('write', { path: 'e2e/data.txt', content: 'alpha\nbeta\ngamma\n' })
+    await call('write', {
+      path: 'e2e/data.txt',
+      content: 'alpha\nbeta\ngamma\n',
+    })
     const read = await call('read', { path: 'e2e/data.txt' })
     expect(read.content).toContain('1  alpha')
     expect(read.content).toContain('3  gamma')
 
     const edited = await call('edit', {
-      path: 'e2e/data.txt', 'start-line': 2, 'end-line': 2, content: 'BETA',
+      path: 'e2e/data.txt',
+      'start-line': 2,
+      'end-line': 2,
+      content: 'BETA',
     })
     expect(edited.content).toContain('@@')
     expect(edited.content).toContain('-beta')
@@ -79,7 +95,10 @@ maybe('live e2e: worker extension against a real easyworker', () => {
     // Second edit without re-read is refused.
     const stale = await agent
       .callTool(tenant, session, 'worker', 'edit', `call-stale-${Date.now()}`, {
-        path: 'e2e/data.txt', 'start-line': 2, 'end-line': 2, content: 'Z',
+        path: 'e2e/data.txt',
+        'start-line': 2,
+        'end-line': 2,
+        content: 'Z',
       })
       .then(r => r.error)
     expect(stale?.code).toBe('permission_denied')
@@ -97,6 +116,8 @@ maybe('live e2e: worker extension against a real easyworker', () => {
     expect(out.content).toContain('tick-')
     await call('job-kill', { 'job-id': jobId })
     const waited = await call('job-wait', { 'job-id': jobId, timeout: 5 })
-    expect(['killed', 'failed', 'done']).toContain((waited.data as Record<string, unknown>).state)
+    expect(['killed', 'failed', 'done']).toContain(
+      (waited.data as Record<string, unknown>).state,
+    )
   }, 120_000)
 })

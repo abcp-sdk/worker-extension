@@ -1,20 +1,20 @@
-import { describe, expect, it } from 'vitest'
 import { TypedToolError } from '@abc-protocol/sdk'
+import { describe, expect, it } from 'vitest'
+import type { WorkerClient } from '../src/client.js'
+import type { SessionEditState } from '../src/tools/edit-state.js'
+import {
+  editFile,
+  type FileCtx,
+  readFile,
+  uploadFile,
+  writeFile,
+} from '../src/tools/files.js'
 import {
   looksTextual,
   numberLines,
   splitLines,
   windowLines,
 } from '../src/tools/text.js'
-import {
-  editFile,
-  readFile,
-  uploadFile,
-  writeFile,
-  type FileCtx,
-} from '../src/tools/files.js'
-import type { WorkerClient } from '../src/client.js'
-import type { SessionEditState } from '../src/tools/edit-state.js'
 
 const enc = (s: string) => new TextEncoder().encode(s)
 
@@ -85,7 +85,11 @@ describe('text helpers', () => {
 describe('read', () => {
   it('returns numbered lines and a truncation marker', async () => {
     const files = { 'a.txt': enc('one\ntwo\nthree\nfour') }
-    const r = await readFile(fileCtx(files), { path: 'a.txt', offset: 1, limit: 2 })
+    const r = await readFile(fileCtx(files), {
+      path: 'a.txt',
+      offset: 1,
+      limit: 2,
+    })
     expect(r.content).toContain('2  two')
     expect(r.content).toContain('3  three')
     expect(r.content).toContain('showing lines 2-3 of 4')
@@ -109,7 +113,10 @@ describe('read', () => {
 describe('write', () => {
   it('writes bytes and returns the numbered full file', async () => {
     const files: Record<string, Uint8Array> = {}
-    const r = await writeFile(fileCtx(files), { path: 'out.txt', content: 'a\nb\n' })
+    const r = await writeFile(fileCtx(files), {
+      path: 'out.txt',
+      content: 'a\nb\n',
+    })
     expect(new TextDecoder().decode(files['out.txt'])).toBe('a\nb\n')
     expect(r.content).toContain('Wrote 4 bytes')
     expect(r.content).toContain('1  a')
@@ -119,8 +126,12 @@ describe('write', () => {
 
   it('does not cap at 1000 lines (whole file returned)', async () => {
     const files: Record<string, Uint8Array> = {}
-    const body = Array.from({ length: 1200 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
-    const r = await writeFile(fileCtx(files), { path: 'big.txt', content: body })
+    const body =
+      Array.from({ length: 1200 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
+    const r = await writeFile(fileCtx(files), {
+      path: 'big.txt',
+      content: body,
+    })
     expect(r.content).toContain('1200  L1200')
     expect(r.content).not.toContain('truncated')
   })
@@ -128,7 +139,10 @@ describe('write', () => {
   it('rejects content over 120 KiB without writing', async () => {
     const files: Record<string, Uint8Array> = {}
     const huge = 'x'.repeat(121 * 1024)
-    const err = await writeFile(fileCtx(files), { path: 'huge.txt', content: huge }).catch(e => e)
+    const err = await writeFile(fileCtx(files), {
+      path: 'huge.txt',
+      content: huge,
+    }).catch(e => e)
     expect(err).toBeInstanceOf(TypedToolError)
     expect((err as TypedToolError).code).toBe('invalid_argument')
     expect(files['huge.txt']).toBeUndefined()
@@ -180,7 +194,12 @@ describe('edit (read-before-edit guard)', () => {
     const files = { 'a.txt': enc('1\n2\n3\n') }
     const ctx = fileCtx(files)
     await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, { path: 'a.txt', 'start-line': 2, 'end-line': 2, content: 'X' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 2,
+      'end-line': 2,
+      content: 'X',
+    })
     const err = await editFile(ctx, {
       path: 'a.txt',
       'start-line': 2,
@@ -190,7 +209,12 @@ describe('edit (read-before-edit guard)', () => {
     expect((err as TypedToolError).code).toBe('permission_denied')
     // re-read then edit works
     await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, { path: 'a.txt', 'start-line': 2, 'end-line': 2, content: 'Y' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 2,
+      'end-line': 2,
+      content: 'Y',
+    })
     expect(decode(files)).toBe('1\nY\n3\n')
   })
 
@@ -212,7 +236,12 @@ describe('edit (read-before-edit guard)', () => {
     const files: Record<string, Uint8Array> = {}
     const ctx = fileCtx(files)
     await writeFile(ctx, { path: 'a.txt', content: '1\n2\n3\n' })
-    await editFile(ctx, { path: 'a.txt', 'start-line': 2, 'end-line': 2, content: 'X' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 2,
+      'end-line': 2,
+      content: 'X',
+    })
     expect(decode(files)).toBe('1\nX\n3\n')
   })
 
@@ -256,7 +285,8 @@ describe('edit (read-before-edit guard)', () => {
   })
 
   it('clamps [10,12] to the last line of a 10-line file (no phantom blank)', async () => {
-    const ten = Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
+    const ten =
+      Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
     const files = { 'a.txt': enc(ten) }
     const ctx = fileCtx(files)
     await readFile(ctx, { path: 'a.txt' })

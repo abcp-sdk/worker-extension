@@ -117,7 +117,10 @@ export async function walkTree(
         emittedHere++
       }
       if (emittedHere < entries.length) {
-        omissions.push({ path: dir || '.', count: entries.length - emittedHere })
+        omissions.push({
+          path: dir || '.',
+          count: entries.length - emittedHere,
+        })
       }
       if (level < maxDepth) {
         for (const e of entries) {

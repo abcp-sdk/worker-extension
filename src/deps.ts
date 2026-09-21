@@ -4,8 +4,8 @@ import {
   ingestFileViaAgent,
   sessionToken,
   sessionVarKey,
-  tenantKVKey,
   TypedToolError,
+  tenantKVKey,
   VARS_BUCKET,
 } from '@abc-protocol/sdk'
 import { tr } from './i18n.js'
@@ -41,7 +41,10 @@ export interface WorkerDeps {
     name: string,
   ) => Promise<string>
   /** Load the session's read-before-edit state ('' when never stored). */
-  loadEditState: (tenant: string, sessionName: string) => Promise<SessionEditState>
+  loadEditState: (
+    tenant: string,
+    sessionName: string,
+  ) => Promise<SessionEditState>
   /** Persist the session's read-before-edit state. */
   saveEditState: (
     tenant: string,
@@ -86,7 +89,10 @@ export function agentFileDeps(bus: Bus): WorkerDeps {
       const t = requireTenant(tenant, 'getFile')
       const got = await getFileViaAgent(bus, t, code)
       if (got === null) {
-        throw new TypedToolError('not_found', tr('en', 'fileNotFound', { code }))
+        throw new TypedToolError(
+          'not_found',
+          tr('en', 'fileNotFound', { code }),
+        )
       }
       return { data: got.data, name: got.meta.name, mime: got.meta.mime }
     },
@@ -130,7 +136,10 @@ export function agentFileDeps(bus: Bus): WorkerDeps {
     clearEditState: async (tenant, sessionName) => {
       if (sessionName === '') return
       await bus
-        .kvDelete(EDIT_STATE_BUCKET, tenantKVKey(tenant, sessionToken(sessionName)))
+        .kvDelete(
+          EDIT_STATE_BUCKET,
+          tenantKVKey(tenant, sessionToken(sessionName)),
+        )
         .catch(() => {})
     },
   }

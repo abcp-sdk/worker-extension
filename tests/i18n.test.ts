@@ -18,8 +18,18 @@ describe('workspace i18n', () => {
   })
 
   it('interpolates all placeholders in each locale', () => {
-    const en = tr('en', 'uploaded', { path: 'a.txt', code: 'c1', mime: 'text/plain', bytes: 3 })
-    const zh = tr('zh', 'uploaded', { path: 'a.txt', code: 'c1', mime: 'text/plain', bytes: 3 })
+    const en = tr('en', 'uploaded', {
+      path: 'a.txt',
+      code: 'c1',
+      mime: 'text/plain',
+      bytes: 3,
+    })
+    const zh = tr('zh', 'uploaded', {
+      path: 'a.txt',
+      code: 'c1',
+      mime: 'text/plain',
+      bytes: 3,
+    })
     expect(en).toBe("Uploaded 'a.txt' as file:c1 (text/plain, 3 bytes).")
     expect(zh).toBe("已上传 'a.txt' 为 file:c1（text/plain，3 字节）。")
   })

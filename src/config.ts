@@ -10,10 +10,19 @@ export const CONFIG = {
 /** Every tool requires a reachable worker. */
 export const WORKER_REQUIRED = [CONFIG.workerUrl, CONFIG.workerToken]
 
-export type GetConfig = (name: string, sessionName?: string, tenant?: string) => unknown
+export type GetConfig = (
+  name: string,
+  sessionName?: string,
+  tenant?: string,
+) => unknown
 
 /** Read a config string ('' when unset/wrong type). */
-export function cfgRaw(get: GetConfig, name: string, session: string, tenant: string): string {
+export function cfgRaw(
+  get: GetConfig,
+  name: string,
+  session: string,
+  tenant: string,
+): string {
   const v = get(name, session, tenant)
   return typeof v === 'string' ? v.trim() : ''
 }
@@ -28,7 +37,10 @@ export function cfgString(
 ): string {
   const v = cfgRaw(get, name, session, tenant)
   if (v === '') {
-    throw new TypedToolError('invalid_argument', tr(locale, 'notConfigured', { name }))
+    throw new TypedToolError(
+      'invalid_argument',
+      tr(locale, 'notConfigured', { name }),
+    )
   }
   return v
 }
@@ -39,7 +51,12 @@ export interface WorkerConfig {
   token: string
 }
 
-export function workerConfig(get: GetConfig, session: string, tenant: string, locale: string): WorkerConfig {
+export function workerConfig(
+  get: GetConfig,
+  session: string,
+  tenant: string,
+  locale: string,
+): WorkerConfig {
   return {
     url: cfgString(get, CONFIG.workerUrl, session, tenant, locale),
     // An empty token is allowed (a worker with auth disabled).

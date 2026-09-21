@@ -69,8 +69,7 @@ export function windowLines(
   bytes: Uint8Array,
   offset: number,
   limit: number,
-  decode: (b: Uint8Array) => string = b =>
-    new TextDecoder('utf-8').decode(b),
+  decode: (b: Uint8Array) => string = b => new TextDecoder('utf-8').decode(b),
 ): TextWindow {
   const isText = looksTextual(bytes)
   const all = splitLines(decode(bytes))
@@ -78,7 +77,13 @@ export function windowLines(
   const start = Math.min(Math.max(0, Math.floor(offset)), total)
   const n = Math.max(1, Math.floor(limit))
   const lines = all.slice(start, start + n)
-  return { isText, lines, total, start, truncated: start + lines.length < total }
+  return {
+    isText,
+    lines,
+    total,
+    start,
+    truncated: start + lines.length < total,
+  }
 }
 
 /** Render lines with 1-based absolute line-number prefixes, padded. */
@@ -87,8 +92,8 @@ export function numberLines(
   startLine: number,
 ): string[] {
   const width = String(startLine + lines.length).length
-  return lines.map((l, i) =>
-    `${String(startLine + i).padStart(width, ' ')}  ${l}`,
+  return lines.map(
+    (l, i) => `${String(startLine + i).padStart(width, ' ')}  ${l}`,
   )
 }
 

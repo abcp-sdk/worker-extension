@@ -1,14 +1,14 @@
-import { afterAll, describe, expect, it } from 'vitest'
 import {
   Agent,
+  connectNatsBus,
   Extension,
   ExtensionManifestSchema,
-  connectNatsBus,
   start,
 } from '@abc-protocol/sdk'
-import { createWorkerConfig, EXT_ID } from '../src/index.js'
-import { CONFIG, WORKER_REQUIRED } from '../src/config.js'
+import { afterAll, describe, expect, it } from 'vitest'
 import type { WorkerClient } from '../src/client.js'
+import { CONFIG, WORKER_REQUIRED } from '../src/config.js'
+import { createWorkerConfig, EXT_ID } from '../src/index.js'
 
 /** A throwing stub client — registration never calls it. */
 function stubClient(): WorkerClient {
@@ -69,10 +69,14 @@ describe('worker extension registration', () => {
 
     let manifest = null
     for (let i = 0; i < 5 && manifest === null; i++) {
-      const replies = await bus.requestMany('abc.discover', {}, {
-        maxWaitMs: 800,
-        tenant: 'global',
-      })
+      const replies = await bus.requestMany(
+        'abc.discover',
+        {},
+        {
+          maxWaitMs: 800,
+          tenant: 'global',
+        },
+      )
       for (const env of replies) {
         const p = ExtensionManifestSchema.safeParse(env.payload)
         if (p.success && p.data.id === EXT_ID) manifest = p.data

@@ -1,8 +1,8 @@
 import { type ToolResultData, TypedToolError } from '@abc-protocol/sdk'
 import type { WorkerClient } from '../client.js'
+import { tr } from '../i18n.js'
 import { capLines, truncationNote } from './output.js'
 import { envArg, numArg, requireArg, secondsArg, strArg } from './shared.js'
-import { tr } from '../i18n.js'
 
 export interface JobCtx {
   client: WorkerClient
@@ -59,8 +59,10 @@ async function waitForJob(
       { jobId, timeoutMs: slice },
       signal !== undefined ? { signal } : {},
     )
-    if (res.state !== RUNNING) return { state: res.state, exitCode: res.exitCode }
-    if (Date.now() >= deadline) return { state: res.state, exitCode: res.exitCode }
+    if (res.state !== RUNNING)
+      return { state: res.state, exitCode: res.exitCode }
+    if (Date.now() >= deadline)
+      return { state: res.state, exitCode: res.exitCode }
     // Guard against a worker that returns immediately without advancing time.
     await sleep(Math.min(100, Math.max(0, deadline - Date.now())), signal)
   }
@@ -101,19 +103,47 @@ export async function execCommand(
   if (done.state === RUNNING) {
     // Timed out: show the OLDEST 200 lines (from the start) so a long-running
     // job's early output is visible; the tail may not exist yet.
-    const { text } = await renderOutput(ctx.client, jobId, 0, 200, 'all', ctx.locale)
-    let content = tr(ctx.locale ?? 'en', 'execStillRunning', { jobId, timeout: timeoutS }) + '\n'
-    if (text !== '') content += text + '\n'
+    const { text } = await renderOutput(
+      ctx.client,
+      jobId,
+      0,
+      200,
+      'all',
+      ctx.locale,
+    )
+    let content =
+      tr(ctx.locale ?? 'en', 'execStillRunning', { jobId, timeout: timeoutS }) +
+      '\n'
+    if (text !== '') content += `${text}\n`
     content += tr(ctx.locale ?? 'en', 'execUseJobOutput', { jobId })
-    return { content, data: { 'job-id': jobId, state: RUNNING, backgrounded: true } }
+    return {
+      content,
+      data: { 'job-id': jobId, state: RUNNING, backgrounded: true },
+    }
   }
 
-  const { text } = await renderOutput(ctx.client, jobId, 0, 0, 'all', ctx.locale)
-  let content = tr(ctx.locale ?? 'en', 'commandFinished', { jobId, state: done.state, code: done.exitCode })
+  const { text } = await renderOutput(
+    ctx.client,
+    jobId,
+    0,
+    0,
+    'all',
+    ctx.locale,
+  )
+  let content = tr(ctx.locale ?? 'en', 'commandFinished', {
+    jobId,
+    state: done.state,
+    code: done.exitCode,
+  })
   if (text !== '') content += `\n${text}`
   return {
     content,
-    data: { 'job-id': jobId, state: done.state, exit_code: done.exitCode, backgrounded: false },
+    data: {
+      'job-id': jobId,
+      state: done.state,
+      exit_code: done.exitCode,
+      backgrounded: false,
+    },
   }
 }
 
@@ -150,7 +180,12 @@ export async function jobOutput(
   const capped = capLines(res.lines, limit)
   let content = capped.kept.join('\n')
   if (capped.truncated) {
-    content += truncationNote(capped, capped.kept.length, res.totalLines, ctx.locale)
+    content += truncationNote(
+      capped,
+      capped.kept.length,
+      res.totalLines,
+      ctx.locale,
+    )
   }
   const from = res.startLine
   const to = res.endLine
@@ -174,13 +209,27 @@ export async function jobWait(
   const jobId = requireArg(args, 'job-id', ctx.locale)
   const timeoutS = secondsArg(args, 60, 600)
   const done = await waitForJob(ctx.client, jobId, timeoutS * 1000, ctx.signal)
-  const { text } = await renderOutput(ctx.client, jobId, -200, 0, 'all', ctx.locale)
+  const { text } = await renderOutput(
+    ctx.client,
+    jobId,
+    -200,
+    0,
+    'all',
+    ctx.locale,
+  )
   if (done.state === RUNNING) {
-    let content = tr(ctx.locale ?? 'en', 'jobStillRunning', { jobId, timeout: timeoutS })
+    let content = tr(ctx.locale ?? 'en', 'jobStillRunning', {
+      jobId,
+      timeout: timeoutS,
+    })
     if (text !== '') content += `\n${text}`
     return { content, data: { 'job-id': jobId, state: RUNNING } }
   }
-  let content = tr(ctx.locale ?? 'en', 'jobFinished', { jobId, state: done.state, code: done.exitCode })
+  let content = tr(ctx.locale ?? 'en', 'jobFinished', {
+    jobId,
+    state: done.state,
+    code: done.exitCode,
+  })
   if (text !== '') content += `\n${text}`
   return {
     content,
@@ -222,13 +271,20 @@ export async function jobStdin(
 /** `job-list`: list jobs registered in the worker. */
 export async function jobList(ctx: JobCtx): Promise<ToolResultData> {
   const res = await ctx.client.listJobs({})
-  if (res.jobs.length === 0) return { content: tr(ctx.locale ?? 'en', 'noJobs') }
+  if (res.jobs.length === 0)
+    return { content: tr(ctx.locale ?? 'en', 'noJobs') }
   const lines = res.jobs.map(
     j =>
       `${j.id}  ${j.state}${j.exitCode ? ` (exit ${j.exitCode})` : ''}  ${j.command}`,
   )
   const capped = capLines(lines)
   let content = capped.kept.join('\n')
-  if (capped.truncated) content += truncationNote(capped, capped.kept.length, lines.length, ctx.locale)
+  if (capped.truncated)
+    content += truncationNote(
+      capped,
+      capped.kept.length,
+      lines.length,
+      ctx.locale,
+    )
   return { content, data: { count: res.jobs.length } }
 }

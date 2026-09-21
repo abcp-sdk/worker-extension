@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   formatRanges,
   invalidate,
+  type LineRange,
   mergeRanges,
   pathHash,
   rangesCover,
   recordSeen,
   seenFor,
-  type LineRange,
 } from '../src/tools/edit-state.js'
 
 describe('mergeRanges', () => {
@@ -41,11 +41,29 @@ describe('rangesCover', () => {
   })
 
   it('is true across a coalesced gap-free span', () => {
-    expect(rangesCover([[1, 5], [6, 10]], 3, 8)).toBe(true)
+    expect(
+      rangesCover(
+        [
+          [1, 5],
+          [6, 10],
+        ],
+        3,
+        8,
+      ),
+    ).toBe(true)
   })
 
   it('is false when a line falls in a gap', () => {
-    expect(rangesCover([[1, 5], [10, 15]], 4, 11)).toBe(false)
+    expect(
+      rangesCover(
+        [
+          [1, 5],
+          [10, 15],
+        ],
+        4,
+        11,
+      ),
+    ).toBe(false)
   })
 
   it('is true for an empty range', () => {
@@ -55,7 +73,12 @@ describe('rangesCover', () => {
 
 describe('formatRanges', () => {
   it('renders singles and spans', () => {
-    expect(formatRanges([[1, 1], [3, 5]])).toBe('1, 3-5')
+    expect(
+      formatRanges([
+        [1, 1],
+        [3, 5],
+      ]),
+    ).toBe('1, 3-5')
     expect(formatRanges([])).toBe('none')
   })
 })

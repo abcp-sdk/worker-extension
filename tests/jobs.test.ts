@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { WorkerClient } from '../src/client.js'
 import {
   execCommand,
+  type JobCtx,
   jobOutput,
   jobWait,
-  type JobCtx,
 } from '../src/tools/jobs.js'
 
 interface FakeJob {
@@ -26,12 +26,9 @@ function fakeClient(job: FakeJob, waitStates: string[]): WorkerClient {
       i++
       return { state, exitCode: job.exitCode }
     },
-    jobOutput: async (req: {
-      start: number
-      end: number
-    }) => {
+    jobOutput: async (req: { start: number; end: number }) => {
       const total = job.lines.length
-      let s = req.start < 0 ? Math.max(0, total + req.start) : req.start
+      const s = req.start < 0 ? Math.max(0, total + req.start) : req.start
       let e = req.end <= 0 ? total : Math.min(req.end, total)
       if (e < s) e = s
       return {
@@ -62,7 +59,11 @@ describe('exec', () => {
     })
     expect(r.content).toContain('exit 0')
     expect(r.content).toContain('hello')
-    expect(r.data).toMatchObject({ 'job-id': 'j1', state: 'done', exit_code: 0 })
+    expect(r.data).toMatchObject({
+      'job-id': 'j1',
+      state: 'done',
+      exit_code: 0,
+    })
   })
 
   it('on timeout returns the OLDEST 200 lines and a running note', async () => {

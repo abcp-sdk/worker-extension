@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { capLines, humanSize, MAX_RESULT_LINES, truncationNote } from '../src/tools/output.js'
+import {
+  capLines,
+  humanSize,
+  MAX_RESULT_LINES,
+  truncationNote,
+} from '../src/tools/output.js'
 
 describe('humanSize', () => {
   it('formats bytes and scales units', () => {
@@ -41,10 +46,16 @@ describe('capLines', () => {
 
 describe('truncationNote', () => {
   it('is empty when nothing was cut', () => {
-    expect(truncationNote({ kept: [], truncated: false, reason: null }, 0, 0)).toBe('')
+    expect(
+      truncationNote({ kept: [], truncated: false, reason: null }, 0, 0),
+    ).toBe('')
   })
   it('mentions lines when line-capped', () => {
-    const note = truncationNote({ kept: [], truncated: true, reason: 'lines' }, 3, 10)
+    const note = truncationNote(
+      { kept: [], truncated: true, reason: 'lines' },
+      3,
+      10,
+    )
     expect(note).toContain('3 of 10 lines')
   })
 })
