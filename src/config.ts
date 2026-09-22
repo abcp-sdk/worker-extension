@@ -7,7 +7,8 @@ export const CONFIG = {
   workerToken: 'worker-token',
 } as const
 
-/** Every tool requires a reachable worker. */
+/** Config knobs every worker tool requires (mirrored in manifest.yaml's
+ *  `required_config`). Kept as a hand-exported constant for tests/readers. */
 export const WORKER_REQUIRED = [CONFIG.workerUrl, CONFIG.workerToken]
 
 export type GetConfig = (

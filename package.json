@@ -1,6 +1,6 @@
 {
   "name": "@abc-protocol/worker-extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Worker extension server: run commands and read/write files in ONE fixed remote easyworker sandbox (worker-url + worker-token). The stable single-worker variant; see workspace-extension for dynamic sandboxes + git.",
   "type": "module",
   "main": "./src/index.ts",
@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "src"
+    "src",
+    "manifest.yaml"
   ],
   "scripts": {
     "build": "tsc --emitDeclarationOnly && node scripts/bundle.mjs",
@@ -25,7 +26,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@abc-protocol/sdk": "github:abcp-sdk/abc-protocol-typescript#v3.6.0",
+    "@abc-protocol/sdk": "github:abcp-sdk/abc-protocol-typescript#v3.7.0",
     "@bufbuild/protobuf": "^2.15.0",
     "@connectrpc/connect": "^2.2.0",
     "@connectrpc/connect-node": "^2.2.0",

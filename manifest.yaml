@@ -1,0 +1,426 @@
+id: worker
+version: 0.2.0
+lifecycle: [deleted]
+
+# Tool metadata (description / schema / i18n) lives HERE; the execute handlers
+# live in src/index.ts. `manifestConfig()` joins the two: the manifest supplies
+# every tool's description/input_schema/required_config, the code supplies only
+# `execute`. This keeps the model-facing contract (and its translations) out of
+# the implementation, exactly like the bundled extension.
+#
+# EXEC_WARNING: appended to exec / job-start (and their `command` argument) —
+# the remote worker already runs every job as a tracked background task, so
+# shell-level backgrounding and output redirection break observability.
+
+tools:
+  - name: info
+    description: >-
+      Show the connected easyworker environment: OS/arch, shell, workspace
+      root, service DNS and boot id.
+    descriptions:
+      zh: 查看所连 easyworker 的环境：OS/架构、shell、工作区根目录、服务域名与 boot id。
+    input_schema:
+      type: object
+      properties: {}
+      required: []
+    required_config: [worker-url, worker-token]
+
+  - name: exec
+    description: >-
+      Run a short shell command in the worker workspace and wait up to `timeout`
+      seconds. Returns the job id always; on completion up to 1000 lines of
+      output, on timeout the oldest 200 lines plus a note that the job is still
+      running. IMPORTANT: the remote worker runs every command as a background
+      job and records its full output. Do NOT background the command yourself
+      with &, nohup, setsid, disown, or `&` in a subshell; do NOT truncate or
+      redirect output with pipes (e.g. `| head`/`| tail`) or redirection (e.g.
+      `> file`, `2>&1`, `>> file`); do NOT run a daemon/server in the foreground
+      expecting the call to return. Run the command as-is (the worker streams
+      and stores stdout/stderr), then read the result with the job-output/job-wait
+      tools.
+    descriptions:
+      zh: >-
+        在工作区运行一个短命令，最多等待 `timeout` 秒。总是返回 job id；完成时最多返回 1000
+        行输出，超时则返回最旧的 200 行并提示任务仍在运行。重要：远端 worker 会把每条命令都作为后台任务运行并记录完整输出。请勿自行用
+        &、nohup、setsid、disown 或子 shell 的 & 将命令放到后台；请勿用管道截断输出（如 `| head`/`| tail`）或重定向输出（如
+        `> file`、`2>&1`、`>> file`）；也请勿在前台运行常驻的守护进程/服务并指望调用立即返回。请原样运行命令（worker
+        会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
+    input_schema:
+      type: object
+      properties:
+        command:
+          type: string
+          description: >-
+            Shell command to run. IMPORTANT: the remote worker runs every command
+            as a background job and records its full output. Do NOT background
+            the command yourself with &, nohup, setsid, disown, or `&` in a
+            subshell; do NOT truncate or redirect output with pipes (e.g. `|
+            head`/`| tail`) or redirection (e.g. `> file`, `2>&1`, `>> file`); do
+            NOT run a daemon/server in the foreground expecting the call to
+            return. Run the command as-is (the worker streams and stores
+            stdout/stderr), then read the result with the job-output/job-wait
+            tools.
+          descriptions:
+            zh: >-
+              要运行的 shell 命令。重要：远端 worker 会把每条命令都作为后台任务运行并记录完整输出。请勿自行用
+              &、nohup、setsid、disown 或子 shell 的 & 将命令放到后台；请勿用管道截断输出（如 `| head`/`| tail`）或重定向输出（如
+              `> file`、`2>&1`、`>> file`）；也请勿在前台运行常驻的守护进程/服务并指望调用立即返回。请原样运行命令（worker
+              会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
+        workdir:
+          type: string
+          description: Working directory, relative to the workspace root.
+          descriptions:
+            zh: 工作目录，相对于工作区根目录。
+        timeout:
+          type: integer
+          description: Synchronous wait ceiling in seconds (default 5, max 60).
+          descriptions:
+            zh: 同步等待上限（秒，默认 5，最大 60）。
+        env:
+          type: object
+          description: Extra environment variables for the job.
+          descriptions:
+            zh: 为任务附加的环境变量。
+          additionalProperties:
+            type: string
+      required: [command]
+    required_config: [worker-url, worker-token]
+
+  - name: job-start
+    description: >-
+      Start a long-running shell command and return the job id immediately (no
+      waiting). Drive it with job-wait/job-output/job-stdin/job-kill. IMPORTANT:
+      the remote worker runs every command as a background job and records its
+      full output. Do NOT background the command yourself with &, nohup, setsid,
+      disown, or `&` in a subshell; do NOT truncate or redirect output with
+      pipes (e.g. `| head`/`| tail`) or redirection (e.g. `> file`, `2>&1`, `>>
+      file`); do NOT run a daemon/server in the foreground expecting the call to
+      return. Run the command as-is (the worker streams and stores
+      stdout/stderr), then read the result with the job-output/job-wait tools.
+    descriptions:
+      zh: >-
+        启动一个长时间运行的 shell 命令并立即返回 job id（不等待）。用
+        job-wait/job-output/job-stdin/job-kill 进行后续控制。重要：远端 worker 会把每条命令都作为后台任务运行并记录完整输出。请勿自行用
+        &、nohup、setsid、disown 或子 shell 的 & 将命令放到后台；请勿用管道截断输出（如 `| head`/`| tail`）或重定向输出（如
+        `> file`、`2>&1`、`>> file`）；也请勿在前台运行常驻的守护进程/服务并指望调用立即返回。请原样运行命令（worker
+        会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
+    input_schema:
+      type: object
+      properties:
+        command:
+          type: string
+          description: >-
+            Shell command to run. IMPORTANT: the remote worker runs every command
+            as a background job and records its full output. Do NOT background
+            the command yourself with &, nohup, setsid, disown, or `&` in a
+            subshell; do NOT truncate or redirect output with pipes (e.g. `|
+            head`/`| tail`) or redirection (e.g. `> file`, `2>&1`, `>> file`); do
+            NOT run a daemon/server in the foreground expecting the call to
+            return. Run the command as-is (the worker streams and stores
+            stdout/stderr), then read the result with the job-output/job-wait
+            tools.
+          descriptions:
+            zh: >-
+              要运行的 shell 命令。重要：远端 worker 会把每条命令都作为后台任务运行并记录完整输出。请勿自行用
+              &、nohup、setsid、disown 或子 shell 的 & 将命令放到后台；请勿用管道截断输出（如 `| head`/`| tail`）或重定向输出（如
+              `> file`、`2>&1`、`>> file`）；也请勿在前台运行常驻的守护进程/服务并指望调用立即返回。请原样运行命令（worker
+              会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
+        workdir:
+          type: string
+          description: Working directory, relative to the workspace root.
+          descriptions:
+            zh: 工作目录，相对于工作区根目录。
+        env:
+          type: object
+          description: Extra environment variables for the job.
+          descriptions:
+            zh: 为任务附加的环境变量。
+          additionalProperties:
+            type: string
+      required: [command]
+    required_config: [worker-url, worker-token]
+
+  - name: job-output
+    description: >-
+      Read a job's output by line window (offset/limit; offset negative counts
+      from the end). Display is capped at 1000 lines / 120 KiB.
+    descriptions:
+      zh: 按行窗口读取任务输出（offset/limit；offset 为负从末尾计数）。展示上限 1000 行 / 120 KiB。
+    input_schema:
+      type: object
+      properties:
+        job-id:
+          type: string
+          description: Background job id.
+          descriptions:
+            zh: 后台任务 id。
+        offset:
+          type: integer
+          description: Start line offset (negative = from the end, default 0).
+          descriptions:
+            zh: 起始行偏移（负值从末尾算，默认 0）。
+        limit:
+          type: integer
+          description: Maximum lines to return (default 200, max 1000).
+          descriptions:
+            zh: 最多返回行数（默认 200，最大 1000）。
+        stream:
+          type: string
+          enum: [all, stdout, stderr]
+          description: Which stream to read (default all).
+          descriptions:
+            zh: 读取哪个流（默认 all）。
+      required: [job-id]
+    required_config: [worker-url, worker-token]
+
+  - name: job-wait
+    description: >-
+      Wait up to `timeout` seconds for a job to finish; returns the latest 200
+      lines of output. If it is still running at the deadline, says so.
+    descriptions:
+      zh: 最多等待 `timeout` 秒让任务结束；返回最新的 200 行输出。若到点仍在运行则明确提示。
+    input_schema:
+      type: object
+      properties:
+        job-id:
+          type: string
+          description: Background job id.
+          descriptions:
+            zh: 后台任务 id。
+        timeout:
+          type: integer
+          description: Wait ceiling in seconds (default 60, max 600).
+          descriptions:
+            zh: 等待上限（秒，默认 60，最大 600）。
+      required: [job-id]
+    required_config: [worker-url, worker-token]
+
+  - name: job-kill
+    description: Kill a job and its whole process tree.
+    descriptions:
+      zh: 终止任务及其整个进程树。
+    input_schema:
+      type: object
+      properties:
+        job-id:
+          type: string
+          description: Background job id.
+          descriptions:
+            zh: 后台任务 id。
+      required: [job-id]
+    required_config: [worker-url, worker-token]
+
+  - name: job-stdin
+    description: Write to a job's stdin, optionally closing it.
+    descriptions:
+      zh: 向任务的 stdin 写入数据，可选关闭。
+    input_schema:
+      type: object
+      properties:
+        job-id:
+          type: string
+          description: Background job id.
+          descriptions:
+            zh: 后台任务 id。
+        data:
+          type: string
+          description: Text to write to stdin.
+          descriptions:
+            zh: 写入 stdin 的文本。
+        close:
+          type: boolean
+          description: Close stdin after writing.
+          descriptions:
+            zh: 写入后关闭 stdin。
+      required: [job-id]
+    required_config: [worker-url, worker-token]
+
+  - name: job-list
+    description: List jobs registered in the worker (id, state, exit code, command).
+    descriptions:
+      zh: 列出 worker 中登记的任务（id、状态、退出码、命令）。
+    input_schema:
+      type: object
+      properties: {}
+      required: []
+    required_config: [worker-url, worker-token]
+
+  - name: read
+    description: >-
+      Read a text file from the workspace with line numbers, windowed by
+      offset/limit. Binary files are rejected. Reading records the lines as
+      "seen" so a later edit may change them.
+    descriptions:
+      zh: >-
+        从工作区读取文本文件并带行号，通过 offset/limit 分窗。二进制文件会被拒绝。读取会记录已“看到”的行，之后 edit
+        才能修改这些行。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path, relative to the workspace root.
+          descriptions:
+            zh: 文件路径，相对于工作区根目录。
+        offset:
+          type: integer
+          description: Start line (0-based, default 0).
+          descriptions:
+            zh: 起始行（从 0 开始，默认 0）。
+        limit:
+          type: integer
+          description: Maximum lines (default 200, max 1000).
+          descriptions:
+            zh: 最多行数（默认 200，最大 1000）。
+      required: [path]
+    required_config: [worker-url, worker-token]
+
+  - name: write
+    description: >-
+      Write (overwrite) a text file in the workspace, then return the whole file
+      with line numbers. Rejected if the content exceeds 120 KiB. The whole file
+      counts as "seen", so it can be edited afterwards.
+    descriptions:
+      zh: >-
+        向工作区写入（覆盖）文本文件，随后返回带行号的全文件。内容超过 120 KiB 会被拒绝。整个文件视为已“看到”，之后可直接
+        edit。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path, relative to the workspace root.
+          descriptions:
+            zh: 文件路径，相对于工作区根目录。
+        content:
+          type: string
+          description: Full file content.
+          descriptions:
+            zh: 完整文件内容。
+      required: [path, content]
+    required_config: [worker-url, worker-token]
+
+  - name: edit
+    description: >-
+      Edit a workspace file by line numbers (1-based). When end-line <
+      start-line it inserts before start-line; otherwise it replaces [start-line,
+      end-line]. Out-of-range line numbers are clamped to the file. The session
+      must have read (or written) the file first, and may only edit lines it has
+      seen; the file must be unchanged since that read. A successful edit
+      requires a fresh read before the next edit (line numbers may shift).
+      Returns a one-line summary followed by a unified diff.
+    descriptions:
+      zh: >-
+        按行号（从 1 开始）编辑工作区文件。end-line < start-line 时在 start-line 前插入；否则替换 [start-line,
+        end-line]。越界行号会夹取到文件范围。会话必须先 read（或 write）过该文件，且只能修改已“看到”的行；文件自上次读取后不得变化。编辑成功后需重新
+        read 才能再次 edit（行号可能已改变）。返回一行摘要及本次改动的 unified diff。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path, relative to the workspace root.
+          descriptions:
+            zh: 文件路径，相对于工作区根目录。
+        start-line:
+          type: integer
+          description: Start line (1-based).
+          descriptions:
+            zh: 起始行（从 1 开始）。
+        end-line:
+          type: integer
+          description: End line (1-based, inclusive); < start-line means insert.
+          descriptions:
+            zh: 结束行（从 1 开始，含端点）；小于 start-line 表示插入。
+        content:
+          type: string
+          description: Replacement or inserted text.
+          descriptions:
+            zh: 替换或插入的文本。
+      required: [path, start-line, end-line]
+    required_config: [worker-url, worker-token]
+
+  - name: list
+    description: >-
+      List a workspace path as a breadth-first tree (levels 1..depth) with
+      sizes. Directories beyond the cap stay collapsed.
+    descriptions:
+      zh: 以广度优先树（第 1..depth 层）列出工作区路径并显示大小。超过上限的目录保持折叠。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Directory or file path, relative to the workspace root.
+          descriptions:
+            zh: 目录或文件路径，相对于工作区根目录。
+        limit:
+          type: integer
+          description: Maximum entries (default 200, max 1000).
+          descriptions:
+            zh: 最大条目数（默认 200，最大 1000）。
+        depth:
+          type: integer
+          description: Levels to expand (default 3).
+          descriptions:
+            zh: 展开层数（默认 3）。
+      required: [path]
+    required_config: [worker-url, worker-token]
+
+  - name: download
+    description: Download a stored file (agent `file:<code>`) into the workspace at `path`.
+    descriptions:
+      zh: 将已存储文件（agent 的 `file:<code>`）下载到工作区的 `path`。
+    input_schema:
+      type: object
+      properties:
+        code:
+          type: string
+          description: File code (with or without the `file:` prefix).
+          descriptions:
+            zh: 文件 code（可带或不带 `file:` 前缀）。
+        path:
+          type: string
+          description: Destination path in the workspace.
+          descriptions:
+            zh: 工作区中的目标路径。
+      required: [code, path]
+    required_config: [worker-url, worker-token]
+
+  - name: upload
+    description: >-
+      Upload a workspace file to the agent file store, returning its
+      `file:<code>`. The content type is derived by the agent.
+    descriptions:
+      zh: 将工作区文件上传到 agent 文件存储，返回 `file:<code>`。内容类型由 agent 推断。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path, relative to the workspace root.
+          descriptions:
+            zh: 文件路径，相对于工作区根目录。
+        name:
+          type: string
+          description: Stored file name (defaults to the basename).
+          descriptions:
+            zh: 存储文件名（默认取 basename）。
+      required: [path]
+    required_config: [worker-url, worker-token]
+
+config:
+  - name: worker-url
+    type: string
+    scope: global
+    default: ''
+    description: Base URL of the easyworker sandbox (e.g. http://127.0.0.1:9090).
+    descriptions:
+      zh: easyworker 沙箱的基础地址（如 http://127.0.0.1:9090）。
+  - name: worker-token
+    type: string
+    scope: global
+    default: ''
+    description: easyworker bearer token (empty only when the worker has auth disabled).
+    descriptions:
+      zh: easyworker 的 bearer 令牌（仅当 worker 关闭鉴权时才可留空）。
