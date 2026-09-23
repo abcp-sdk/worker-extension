@@ -51,6 +51,10 @@ export const CATALOG = {
     en: 'Started job {jobId}.',
     zh: '已启动任务 {jobId}。',
   },
+  startedJobTimeout: {
+    en: 'A {timeout}s deadline is armed: at expiry the job is killed (output kept).',
+    zh: '已设置 {timeout} 秒截止：到点后任务会被杀死（保留输出）。',
+  },
   jobStillRunning: {
     en: 'Job {jobId} is still running after {timeout}s.',
     zh: '任务 {jobId} 在 {timeout} 秒后仍在运行。',
@@ -92,6 +96,30 @@ export const CATALOG = {
   writeFailed: {
     en: "failed to write '{path}'.",
     zh: "写入 '{path}' 失败。",
+  },
+  deleteFailed: {
+    en: "failed to delete '{path}'.",
+    zh: "删除 '{path}' 失败。",
+  },
+  deletedPath: {
+    en: "deleted '{path}'.",
+    zh: "已删除 '{path}'。",
+  },
+  moveFailed: {
+    en: "failed to move '{from}' to '{to}'.",
+    zh: "将 '{from}' 移动到 '{to}' 失败。",
+  },
+  movedPath: {
+    en: "moved '{from}' to '{to}'.",
+    zh: "已将 '{from}' 移动到 '{to}'。",
+  },
+  copyFailed: {
+    en: "failed to copy '{from}' to '{to}'.",
+    zh: "将 '{from}' 复制到 '{to}' 失败。",
+  },
+  copiedPath: {
+    en: "copied '{from}' to '{to}'.",
+    zh: "已将 '{from}' 复制到 '{to}'。",
   },
   editSummary: {
     en: "Edited '{path}': +{added} -{removed} (now {lines} lines).",

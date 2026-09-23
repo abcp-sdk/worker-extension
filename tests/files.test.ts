@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import type { WorkerClient } from '../src/client.js'
 import type { SessionEditState } from '../src/tools/edit-state.js'
 import {
+  copyFile,
+  deleteFile,
   editFile,
   type FileCtx,
+  moveFile,
   readFile,
   uploadFile,
   writeFile,
@@ -21,10 +24,29 @@ const enc = (s: string) => new TextEncoder().encode(s)
 /** A fake worker exposing only the file calls the file tools use. */
 function fakeClient(files: Record<string, Uint8Array>): WorkerClient {
   return {
-    fileRead: async (req: { path: string }) => {
+    fileRead: async (req: {
+      path: string
+      startLine?: number
+      endLine?: number
+    }) => {
       const c = files[req.path]
       if (c === undefined) throw new Error(`not found: ${req.path}`)
-      return { content: c }
+      const start = req.startLine ?? 0
+      const end = req.endLine ?? 0
+      if (start === 0 && end === 0) {
+        return { content: c, totalLines: splitLines(decode(c)).length }
+      }
+      // Mirror the worker's line window: split on \n, join the slice with \n.
+      const all = splitLines(decode(c))
+      const s = Math.max(0, Math.min(start, all.length))
+      const e = end <= 0 || end > all.length ? all.length : Math.max(s, end)
+      const window = all.slice(s, e)
+      return {
+        content: enc(window.join('\n')),
+        totalLines: all.length,
+        startLine: s,
+        endLine: e,
+      }
     },
     fileWrite: async (req: { path: string; content: Uint8Array }) => {
       files[req.path] = req.content
@@ -32,6 +54,8 @@ function fakeClient(files: Record<string, Uint8Array>): WorkerClient {
     },
   } as unknown as WorkerClient
 }
+
+const decode = (b: Uint8Array) => new TextDecoder('utf-8').decode(b)
 
 function fileCtx(
   files: Record<string, Uint8Array>,
@@ -105,6 +129,87 @@ describe('read', () => {
 
   it('missing required args are typed invalid_argument', async () => {
     const err = await readFile(fileCtx({}), {}).catch(e => e)
+    expect(err).toBeInstanceOf(TypedToolError)
+    expect((err as TypedToolError).code).toBe('invalid_argument')
+  })
+
+  it('fetches the window SERVER-SIDE (only the window bytes cross the wire)', async () => {
+    const big = Array.from({ length: 5000 }, (_, i) => `line-${i}`).join('\n')
+    const files = { 'big.txt': enc(big) }
+    let seenReq: { startLine?: number; endLine?: number } | null = null
+    const ctx = fileCtx(files)
+    const orig = ctx.client.fileRead
+    ;(ctx.client as unknown as { fileRead: typeof orig }).fileRead = (async (req: {
+      path: string
+      startLine?: number
+      endLine?: number
+    }) => {
+      seenReq = { startLine: req.startLine, endLine: req.endLine }
+      return orig(req as never)
+    }) as typeof orig
+    const r = await readFile(ctx, { path: 'big.txt', offset: 100, limit: 200 })
+    // The worker was asked for exactly [100, 300), not the whole 5000 lines.
+    expect(seenReq).toEqual({ startLine: 100, endLine: 300 })
+    expect(r.content).toContain('101  line-100')
+    expect(r.content).toContain('showing lines 101-300 of 5000')
+  })
+})
+
+describe('delete / move / copy', () => {
+  function fsClient(files: Record<string, Uint8Array>): WorkerClient {
+    const dirs = new Set<string>()
+    return {
+      fileDelete: async (req: { path: string }) => {
+        delete files[req.path]
+        return { ok: true }
+      },
+      fileMove: async (req: { from: string; to: string }) => {
+        if (files[req.from] === undefined) throw new Error('missing')
+        files[req.to] = files[req.from]!
+        delete files[req.from]
+        return { ok: true }
+      },
+      fileCopy: async (req: { from: string; to: string }) => {
+        if (files[req.from] === undefined) throw new Error('missing')
+        files[req.to] = files[req.from]!
+        return { ok: true }
+      },
+    } as unknown as WorkerClient
+  }
+
+  it('delete removes the path and reports it', async () => {
+    const files = { 'a.txt': enc('x') }
+    const ctx = fileCtx(files)
+    ;(ctx as { client: WorkerClient }).client = fsClient(files)
+    const r = await deleteFile(ctx, { path: 'a.txt' })
+    expect(r.content).toContain("deleted 'a.txt'")
+    expect(files['a.txt']).toBeUndefined()
+  })
+
+  it('move renames and reports from/to', async () => {
+    const files = { 'a.txt': enc('x') }
+    const ctx = fileCtx(files)
+    ;(ctx as { client: WorkerClient }).client = fsClient(files)
+    const r = await moveFile(ctx, { from: 'a.txt', to: 'b.txt' })
+    expect(r.content).toContain("moved 'a.txt' to 'b.txt'")
+    expect(files['b.txt']).toBeDefined()
+    expect(files['a.txt']).toBeUndefined()
+  })
+
+  it('copy duplicates and reports from/to', async () => {
+    const files = { 'a.txt': enc('x') }
+    const ctx = fileCtx(files)
+    ;(ctx as { client: WorkerClient }).client = fsClient(files)
+    const r = await copyFile(ctx, { from: 'a.txt', to: 'b.txt' })
+    expect(r.content).toContain("copied 'a.txt' to 'b.txt'")
+    expect(files['a.txt']).toBeDefined()
+    expect(files['b.txt']).toBeDefined()
+  })
+
+  it('missing args are typed invalid_argument', async () => {
+    const ctx = fileCtx({})
+    ;(ctx as { client: WorkerClient }).client = fsClient({})
+    const err = await deleteFile(ctx, {}).catch(e => e)
     expect(err).toBeInstanceOf(TypedToolError)
     expect((err as TypedToolError).code).toBe('invalid_argument')
   })

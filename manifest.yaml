@@ -130,6 +130,17 @@ tools:
           description: Working directory, relative to the workspace root.
           descriptions:
             zh: 工作目录，相对于工作区根目录。
+        timeout:
+          type: integer
+          description: >-
+            Wall-clock deadline in seconds (max 600). At expiry the worker
+            kills the job's whole process tree (state becomes killed) while
+            KEEPING the recorded output — cleaner than wrapping the command in
+            `timeout`, which swallows output. Omit for no deadline.
+          descriptions:
+            zh: >-
+              墙钟截止秒数（最大 600）。到点后 worker 杀死整个进程树（状态变为
+              killed）并保留已记录的输出——比在外层包 `timeout` 命令更干净（后者会吞掉输出）。省略表示不限时。
         env:
           type: object
           description: Extra environment variables for the job.
@@ -365,6 +376,61 @@ tools:
           descriptions:
             zh: 展开层数（默认 3）。
       required: [path]
+    required_config: [worker-url, worker-token]
+
+  - name: delete
+    description: Delete a file or a whole directory tree in the workspace.
+    descriptions:
+      zh: 删除工作区中的一个文件或整个目录树。
+    input_schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File or directory path, relative to the workspace root.
+          descriptions:
+            zh: 文件或目录路径，相对于工作区根目录。
+      required: [path]
+    required_config: [worker-url, worker-token]
+
+  - name: move
+    description: Move or rename a file / directory tree to a new path.
+    descriptions:
+      zh: 移动或重命名文件 / 目录树到新路径。
+    input_schema:
+      type: object
+      properties:
+        from:
+          type: string
+          description: Source path, relative to the workspace root.
+          descriptions:
+            zh: 源路径，相对于工作区根目录。
+        to:
+          type: string
+          description: Destination path, relative to the workspace root.
+          descriptions:
+            zh: 目标路径，相对于工作区根目录。
+      required: [from, to]
+    required_config: [worker-url, worker-token]
+
+  - name: copy
+    description: Copy a file / directory tree onto a new path (recursively).
+    descriptions:
+      zh: 将文件 / 目录树复制到新路径（递归）。
+    input_schema:
+      type: object
+      properties:
+        from:
+          type: string
+          description: Source path, relative to the workspace root.
+          descriptions:
+            zh: 源路径，相对于工作区根目录。
+        to:
+          type: string
+          description: Destination path, relative to the workspace root.
+          descriptions:
+            zh: 目标路径，相对于工作区根目录。
+      required: [from, to]
     required_config: [worker-url, worker-token]
 
   - name: download

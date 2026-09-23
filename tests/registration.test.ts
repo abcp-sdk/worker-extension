@@ -23,6 +23,8 @@ function stubClient(): WorkerClient {
 }
 
 const EXPECTED_TOOLS = [
+  'copy',
+  'delete',
   'download',
   'edit',
   'exec',
@@ -34,6 +36,7 @@ const EXPECTED_TOOLS = [
   'job-start',
   'job-wait',
   'list',
+  'move',
   'read',
   'upload',
   'write',

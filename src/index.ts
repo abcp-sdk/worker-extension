@@ -19,10 +19,13 @@ import { workerConfig } from './config.js'
 import { agentFileDeps, type WorkerDeps } from './deps.js'
 import { localeOf, tr } from './i18n.js'
 import {
+  copyFile,
+  deleteFile,
   downloadFile,
   editFile,
   type FileCtx,
   listFiles,
+  moveFile,
   readFile,
   uploadFile,
   writeFile,
@@ -195,6 +198,9 @@ export function createWorkerConfig(
     write: fileWrap(writeFile),
     edit: fileWrap(editFile),
     list: fileWrap(listFiles),
+    delete: fileWrap(deleteFile),
+    move: fileWrap(moveFile),
+    copy: fileWrap(copyFile),
     download: fileWrap(downloadFile),
     upload: fileWrap(uploadFile),
   }

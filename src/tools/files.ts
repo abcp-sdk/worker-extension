@@ -11,8 +11,6 @@ import {
   recordSeen,
   seenFor,
 } from './edit-state.js'
-import type { DirEntry } from './list.js'
-import { walkTree } from './list.js'
 import {
   capLines,
   humanSize,
@@ -21,7 +19,14 @@ import {
   truncationNote,
 } from './output.js'
 import { baseName, numArg, requireArg, strArg } from './shared.js'
-import { joinFileLines, numberLines, toFileLines, windowLines } from './text.js'
+import {
+  joinFileLines,
+  looksTextual,
+  normalizeRel,
+  numberLines,
+  splitLines,
+  toFileLines,
+} from './text.js'
 
 /** Everything a file-tool handler needs at call time. */
 export interface FileCtx {
@@ -40,7 +45,9 @@ function clampInt(v: number | undefined, def: number, max: number): number {
   return Math.min(n, max)
 }
 
-/** `read`: window a text file with line numbers; never ingests. */
+/** `read`: window a text file with line numbers; never ingests. The window
+ *  is fetched SERVER-SIDE (worker.v1 FileRead start/end_line), so reading a
+ *  slice of a huge file never transfers the whole thing. */
 export async function readFile(
   ctx: FileCtx,
   args: Record<string, unknown>,
@@ -49,13 +56,26 @@ export async function readFile(
   const offset = clampInt(numArg(args, 'offset'), 0, Number.MAX_SAFE_INTEGER)
   const limit = clampInt(numArg(args, 'limit'), 200, 1000)
 
-  const res = await ctx.client.fileRead({ path })
-  const win = windowLines(res.content, offset, limit)
-  if (!win.isText) {
+  const res = await ctx.client.fileRead({
+    path,
+    startLine: offset,
+    endLine: offset + limit,
+  })
+  const isText = looksTextual(res.content)
+  if (!isText) {
     throw new TypedToolError(
       'invalid_argument',
       tr(ctx.locale ?? 'en', 'notTextFile', { path }),
     )
+  }
+  const lines = splitLines(new TextDecoder('utf-8', { fatal: false }).decode(res.content))
+  const total = res.totalLines > 0 ? res.totalLines : lines.length
+  const winStart = res.startLine
+  const win = {
+    lines,
+    total,
+    start: winStart,
+    truncated: winStart + lines.length < total,
   }
   const numbered = numberLines(win.lines, win.start + 1)
   const capped = capLines(numbered)
@@ -78,7 +98,7 @@ export async function readFile(
   // Record exactly the lines DISPLAYED (after the byte/line cap), so a later
   // edit may only touch what the session has actually seen. An empty result
   // still records an entry (ranges []), which is what allows inserting into an
-  // empty file.
+  // empty file. The hash covers the FETCHED window (see edit-state).
   {
     const state = await ctx.deps.loadEditState(ctx.tenant, ctx.session)
     const ranges =
@@ -89,6 +109,11 @@ export async function readFile(
       hashBytes(res.content),
       ranges.map(r => [r[0], r[1]] as [number, number]),
       Date.now(),
+      {
+        start: winStart,
+        end: winStart + lines.length,
+        totalLines: total,
+      },
     )
     await ctx.deps.saveEditState(ctx.tenant, ctx.session, next)
   }
@@ -205,7 +230,23 @@ export async function editFile(
   }
 
   const read = await ctx.client.fileRead({ path })
-  if (hashBytes(read.content) !== seen.sha256) {
+  // Staleness: for a WINDOWED read record, re-fetch the SAME window and
+  // compare hashes (byte-identical domain). Any line-count change shifts the
+  // window's content (hash differs), and in-window edits differ too — as
+  // sound as the legacy whole-file hash. Legacy/whole-file records compare the
+  // whole bytes as before.
+  const stale = await (async () => {
+    if (seen.winStart !== undefined && seen.winEnd !== undefined) {
+      const w = await ctx.client.fileRead({
+        path,
+        startLine: seen.winStart,
+        endLine: seen.winEnd,
+      })
+      return hashBytes(w.content) !== seen.sha256
+    }
+    return hashBytes(read.content) !== seen.sha256
+  })()
+  if (stale) {
     throw new TypedToolError('retryable', tr(locale, 'editStaleRead', { path }))
   }
   const current = new TextDecoder('utf-8', { fatal: false }).decode(
@@ -298,38 +339,46 @@ export async function listFiles(
   const limit = clampInt(numArg(args, 'limit'), 200, 1000)
   const depth = clampInt(numArg(args, 'depth'), 3, 10) || 3
 
-  const listDir = async (
-    p: string,
-  ): Promise<{ isDir: boolean; entries: DirEntry[] }> => {
-    const res = await ctx.client.fileList({ path: p })
-    return {
-      isDir: res.isDir,
-      entries: res.files.map(f => ({
-        path: f.path,
-        size: Number(f.size),
-        isDir: f.isDir,
-      })),
-    }
-  }
+  // ONE server-side recursive listing (worker.v1 FileList depth/limit) —
+  // the depth expansion happens in the worker, not one RPC per directory.
+  // limit+1 is the truncation sentinel: an extra entry back means hit.
+  const res = await ctx.client.fileList({
+    path: path === '' ? '.' : path,
+    depth,
+    limit: limit + 1,
+  })
+  const truncated = res.files.length > limit
+  const entries = (truncated ? res.files.slice(0, limit) : res.files).map(
+    f => ({ path: f.path, size: Number(f.size), isDir: f.isDir }),
+  )
 
-  const walk = await walkTree(listDir, { root: path, depth, limit })
+  // Render the same tree shape: paths come back workspace-relative; make them
+  // relative to the walk root and derive the level from the path depth.
+  const rootRel = path === '' || path === '.' ? '' : normalizeRel(path)
   const lines: string[] = []
-  for (const row of walk.rows) {
-    const indent = '  '.repeat(Math.max(0, row.depth - 1))
-    const marker = row.isDir ? (row.atMaxDepth ? '[+]' : '[-]') : '   '
-    const size = row.isDir ? '-' : humanSize(row.size)
-    lines.push(`${indent}${marker} ${row.path}  ${size}`)
+  let shown = 0
+  for (const e of entries) {
+    let rel = e.path
+    if (rootRel !== '' && (rel === rootRel || rel.startsWith(rootRel + '/'))) {
+      rel = rel.slice(rootRel.length + 1)
+    }
+    const depthOf = rel === '' ? 1 : rel.split('/').length
+    const indent = '  '.repeat(Math.max(0, depthOf - 1))
+    const marker = e.isDir ? (depthOf >= depth ? '[+]' : '[-]') : '   '
+    const size = e.isDir ? '-' : humanSize(e.size)
+    lines.push(`${indent}${marker} ${rel}  ${size}`)
+    shown++
   }
-  for (const om of walk.omissions) {
+  if (truncated) {
     lines.push(
       tr(ctx.locale ?? 'en', 'omittedEntries', {
-        path: om.path,
-        count: om.count,
+        path: rootRel === '' ? '.' : rootRel,
+        count: 1,
         limit,
       }),
     )
   }
-  if (walk.rows.length === 0) {
+  if (shown === 0) {
     return {
       content:
         path === ''
@@ -346,7 +395,62 @@ export async function listFiles(
       lines.length,
       ctx.locale,
     )
-  return { content, data: { rows: capped.kept.length } }
+  return { content, data: { rows: shown, truncated } }
+}
+
+/** `delete`: remove a file or directory tree. */
+export async function deleteFile(
+  ctx: FileCtx,
+  args: Record<string, unknown>,
+): Promise<ToolResultData> {
+  const path = requireArg(args, 'path', ctx.locale)
+  const locale = ctx.locale ?? 'en'
+  const res = await ctx.client.fileDelete({ path })
+  if (!res.ok) {
+    throw new TypedToolError('internal', tr(locale, 'deleteFailed', { path }))
+  }
+  // A deleted file's seen state is meaningless now.
+  const state = await ctx.deps.loadEditState(ctx.tenant, ctx.session)
+  await ctx.deps.saveEditState(
+    ctx.tenant,
+    ctx.session,
+    invalidate(state, path),
+  )
+  return { content: tr(locale, 'deletedPath', { path }) }
+}
+
+/** `move`: rename/move a file or directory tree to `to`. */
+export async function moveFile(
+  ctx: FileCtx,
+  args: Record<string, unknown>,
+): Promise<ToolResultData> {
+  const from = requireArg(args, 'from', ctx.locale)
+  const to = requireArg(args, 'to', ctx.locale)
+  const locale = ctx.locale ?? 'en'
+  const res = await ctx.client.fileMove({ from, to })
+  if (!res.ok) {
+    throw new TypedToolError('internal', tr(locale, 'moveFailed', { from, to }))
+  }
+  const state = await ctx.deps.loadEditState(ctx.tenant, ctx.session)
+  let next = invalidate(state, from)
+  next = invalidate(next, to)
+  await ctx.deps.saveEditState(ctx.tenant, ctx.session, next)
+  return { content: tr(locale, 'movedPath', { from, to }) }
+}
+
+/** `copy`: copy a file or directory tree onto `to`. */
+export async function copyFile(
+  ctx: FileCtx,
+  args: Record<string, unknown>,
+): Promise<ToolResultData> {
+  const from = requireArg(args, 'from', ctx.locale)
+  const to = requireArg(args, 'to', ctx.locale)
+  const locale = ctx.locale ?? 'en'
+  const res = await ctx.client.fileCopy({ from, to })
+  if (!res.ok) {
+    throw new TypedToolError('internal', tr(locale, 'copyFailed', { from, to }))
+  }
+  return { content: tr(locale, 'copiedPath', { from, to }) }
 }
 
 /** `download`: agent file → workspace path. */
