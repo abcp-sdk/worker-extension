@@ -39,6 +39,35 @@ export function createWorkerClient(ep: WorkerEndpoint): WorkerClient {
   return createClient(WorkerService, transport)
 }
 
+/** The worker's HOME + workspace root, used to expand a leading `~` in paths. */
+export interface WorkerAnchors {
+  home: string
+  workspace: string
+}
+
+/**
+ * Anchors cached per client instance (the client itself is LRU-cached by
+ * `(url, token)`, so this is effectively per worker). A worker's home/workspace
+ * are stable for its lifetime; the cache is dropped on a failed fetch so a
+ * transient error does not pin empty anchors.
+ */
+const anchorsCache = new WeakMap<WorkerClient, Promise<WorkerAnchors>>()
+
+/** Fetch (and cache) a worker's `home` + `workspace` anchors. */
+export function workerAnchors(client: WorkerClient): Promise<WorkerAnchors> {
+  const hit = anchorsCache.get(client)
+  if (hit !== undefined) return hit
+  const p = client
+    .info({})
+    .then(i => ({ home: i.home, workspace: i.workspace }))
+    .catch(() => {
+      anchorsCache.delete(client)
+      return { home: '', workspace: '' }
+    })
+  anchorsCache.set(client, p)
+  return p
+}
+
 /**
  * Client cache keyed by `(url, token)`. Rebuilt when either changes; capped
  * (LRU) so a misconfigured URL cannot grow the map without bound.

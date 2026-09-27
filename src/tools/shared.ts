@@ -1,10 +1,32 @@
 import { numArg, strArg, TypedToolError } from '@abc-protocol/sdk'
 import { tr } from '../i18n.js'
-import type { AnchorError, EditRangeError } from './text.js'
+import { type AnchorError, type EditRangeError, expandTilde } from './text.js'
 
 // Argument-coercion primitives come from the SDK's extension-kit (they used
 // to be a per-repo copy that drifted across extensions).
 export { numArg, strArg } from '@abc-protocol/sdk'
+
+/**
+ * Return `args` with a leading `~` expanded in the given string path keys
+ * (`~` / `~/` => home, `~/x` => `<home>/x`). A shallow copy is made ONLY when a
+ * value actually changes, so the common no-`~` case allocates nothing.
+ */
+export function expandPathArgs(
+  args: Record<string, unknown>,
+  keys: readonly string[],
+  anchors: { home: string; workspace: string },
+): Record<string, unknown> {
+  let out: Record<string, unknown> | undefined
+  for (const k of keys) {
+    const v = args[k]
+    if (typeof v !== 'string' || v === '') continue
+    const e = expandTilde(v, anchors)
+    if (e === v) continue
+    out ??= { ...args }
+    out[k] = e
+  }
+  return out ?? args
+}
 
 /** Clip long line text for an error message. */
 export function clip(s: string, n = 80): string {

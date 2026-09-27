@@ -14,6 +14,7 @@ import {
   type WorkerClient,
   WorkerClientCache,
   type WorkerEndpoint,
+  workerAnchors,
 } from './client.js'
 import { workerConfig } from './config.js'
 import { agentFileDeps, type WorkerDeps } from './deps.js'
@@ -40,9 +41,15 @@ import {
   jobStdin,
   jobWait,
 } from './tools/jobs.js'
-import { domainOf } from './tools/shared.js'
+import { domainOf, expandPathArgs } from './tools/shared.js'
 
 export const EXT_ID = 'worker'
+
+/**
+ * Worker path arguments that accept a leading `~` alias for the worker's HOME.
+ * Expanded client-side before the call (the worker does not expand `~`).
+ */
+const PATH_KEYS = ['path', 'dest', 'from', 'to', 'workdir'] as const
 
 /** Tool schemas + descriptions come from the manifest; code supplies handlers. */
 const manifest = parseManifest(manifestYaml)
@@ -99,15 +106,18 @@ export function createWorkerConfig(
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
       const cfg = workerConfig(opts.getConfig, s, t, locale)
+      const client = makeClient(cfg)
+      const a = args ?? {}
+      const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
-          client: makeClient(cfg),
+          client,
           url: cfg.url,
           tenant: t,
           session: s,
           locale,
         },
-        args ?? {},
+        expanded,
       )
     }
 
@@ -122,13 +132,16 @@ export function createWorkerConfig(
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
+      const client = clientFor(s, t, locale)
+      const a = args ?? {}
+      const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
-          client: clientFor(s, t, locale),
+          client,
           locale,
           ...(signal !== undefined ? { signal } : {}),
         },
-        args ?? {},
+        expanded,
       )
     }
 
@@ -147,15 +160,18 @@ export function createWorkerConfig(
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
+      const client = clientFor(s, t, locale)
+      const a = args ?? {}
+      const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
-          client: clientFor(s, t, locale),
+          client,
           deps,
           tenant: t,
           session: s,
           locale,
         },
-        args ?? {},
+        expanded,
       )
     }
   }
@@ -164,6 +180,10 @@ export function createWorkerConfig(
     info: wrap(async ({ client, url, locale }) => {
       const info = await client.info({})
       const domain = domainOf(url)
+      const homeLine =
+        info.home !== ''
+          ? `\n${tr(locale, 'infoHome', { path: info.home })}`
+          : ''
       return {
         content:
           tr(locale, 'infoHeader', {
@@ -173,6 +193,7 @@ export function createWorkerConfig(
           }) +
           '\n' +
           tr(locale, 'infoWorkspace', { path: info.workspace }) +
+          homeLine +
           '\n' +
           tr(locale, 'infoService', { url: domain }) +
           '\n' +
@@ -182,6 +203,7 @@ export function createWorkerConfig(
           arch: info.arch,
           shell: info.shell,
           workspace: info.workspace,
+          home: info.home,
           url: domain,
           boot_id: info.bootId,
         },

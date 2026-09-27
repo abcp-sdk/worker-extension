@@ -16,9 +16,10 @@ tools:
   - name: info
     description: >-
       Show the connected easyworker environment: OS/arch, shell, workspace
-      root, service DNS and boot id.
+      root, home dir (`~`), service DNS and boot id. File tools accept a
+      leading `~` as an alias for this home dir.
     descriptions:
-      zh: 查看所连 easyworker 的环境：OS/架构、shell、工作区根目录、服务域名与 boot id。
+      zh: 查看所连 easyworker 的环境：OS/架构、shell、工作区根目录、主目录（`~`）、服务域名与 boot id。文件工具的 `~` 前缀即指该主目录。
     input_schema:
       type: object
       properties: {}
@@ -68,9 +69,11 @@ tools:
               会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
         workdir:
           type: string
-          description: Working directory, relative to the workspace root.
+          description: >-
+            Working directory: relative to the workspace root, absolute, or
+            starting with `~` (the worker home).
           descriptions:
-            zh: 工作目录，相对于工作区根目录。
+            zh: 工作目录：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         timeout:
           type: integer
           description: Synchronous wait ceiling in seconds (default 5, max 60).
@@ -127,9 +130,11 @@ tools:
               会流式记录 stdout/stderr），再用 job-output/job-wait 工具读取结果。
         workdir:
           type: string
-          description: Working directory, relative to the workspace root.
+          description: >-
+            Working directory: relative to the workspace root, absolute, or
+            starting with `~` (the worker home).
           descriptions:
-            zh: 工作目录，相对于工作区根目录。
+            zh: 工作目录：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         timeout:
           type: integer
           description: >-
@@ -270,9 +275,11 @@ tools:
       properties:
         path:
           type: string
-          description: File path, relative to the workspace root.
+          description: >-
+            File path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 文件路径，相对于工作区根目录。
+            zh: 文件路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         offset:
           type: integer
           description: Start line (0-based, default 0).
@@ -300,9 +307,11 @@ tools:
       properties:
         path:
           type: string
-          description: File path, relative to the workspace root.
+          description: >-
+            File path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 文件路径，相对于工作区根目录。
+            zh: 文件路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         content:
           type: string
           description: Full file content.
@@ -347,9 +356,11 @@ tools:
       properties:
         path:
           type: string
-          description: File path, relative to the workspace root.
+          description: >-
+            File path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 文件路径，相对于工作区根目录。
+            zh: 文件路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         start-line:
           type: integer
           description: Start line (1-based).
@@ -397,9 +408,11 @@ tools:
       properties:
         path:
           type: string
-          description: Directory or file path, relative to the workspace root.
+          description: >-
+            Directory or file path: relative to the workspace root, absolute,
+            or starting with `~` (the worker home).
           descriptions:
-            zh: 目录或文件路径，相对于工作区根目录。
+            zh: 目录或文件路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         limit:
           type: integer
           description: Maximum entries (default 200, max 1000).
@@ -422,9 +435,11 @@ tools:
       properties:
         path:
           type: string
-          description: File or directory path, relative to the workspace root.
+          description: >-
+            File or directory path: relative to the workspace root, absolute,
+            or starting with `~` (the worker home).
           descriptions:
-            zh: 文件或目录路径，相对于工作区根目录。
+            zh: 文件或目录路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [path]
     required_config: [worker-url, worker-token]
 
@@ -437,14 +452,18 @@ tools:
       properties:
         from:
           type: string
-          description: Source path, relative to the workspace root.
+          description: >-
+            Source path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 源路径，相对于工作区根目录。
+            zh: 源路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         to:
           type: string
-          description: Destination path, relative to the workspace root.
+          description: >-
+            Destination path: relative to the workspace root, absolute, or
+            starting with `~` (the worker home).
           descriptions:
-            zh: 目标路径，相对于工作区根目录。
+            zh: 目标路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [from, to]
     required_config: [worker-url, worker-token]
 
@@ -457,14 +476,18 @@ tools:
       properties:
         from:
           type: string
-          description: Source path, relative to the workspace root.
+          description: >-
+            Source path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 源路径，相对于工作区根目录。
+            zh: 源路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         to:
           type: string
-          description: Destination path, relative to the workspace root.
+          description: >-
+            Destination path: relative to the workspace root, absolute, or
+            starting with `~` (the worker home).
           descriptions:
-            zh: 目标路径，相对于工作区根目录。
+            zh: 目标路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [from, to]
     required_config: [worker-url, worker-token]
 
@@ -482,9 +505,11 @@ tools:
             zh: 文件 code（可带或不带 `file:` 前缀）。
         path:
           type: string
-          description: Destination path in the workspace.
+          description: >-
+            Destination path in the workspace: relative, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 工作区中的目标路径。
+            zh: 工作区中的目标路径：相对、绝对，或以 `~`（worker 主目录）开头。
       required: [code, path]
     required_config: [worker-url, worker-token]
 
@@ -499,9 +524,11 @@ tools:
       properties:
         path:
           type: string
-          description: File path, relative to the workspace root.
+          description: >-
+            File path: relative to the workspace root, absolute, or starting
+            with `~` (the worker home).
           descriptions:
-            zh: 文件路径，相对于工作区根目录。
+            zh: 文件路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
         name:
           type: string
           description: Stored file name (defaults to the basename).

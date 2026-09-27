@@ -13,6 +13,7 @@ import {
   writeFile,
 } from '../src/tools/files.js'
 import {
+  expandTilde,
   looksTextual,
   numberLines,
   splitLines,
@@ -103,6 +104,18 @@ describe('text helpers', () => {
 
   it('numbers lines from an absolute start', () => {
     expect(numberLines(['x', 'y'], 10)).toEqual(['10  x', '11  y'])
+  })
+
+  it('expands a leading ~ against home (falls back to workspace)', () => {
+    const a = { home: '/root', workspace: '/root/workspace' }
+    expect(expandTilde('~', a)).toBe('/root')
+    expect(expandTilde('~/', a)).toBe('/root')
+    expect(expandTilde('~/x/y', a)).toBe('/root/x/y')
+    expect(expandTilde('/abs/x', a)).toBe('/abs/x')
+    expect(expandTilde('rel/x', a)).toBe('rel/x')
+    expect(expandTilde('~bob/x', a)).toBe('~bob/x')
+    expect(expandTilde('~/x', { home: '', workspace: '/ws' })).toBe('/ws/x')
+    expect(expandTilde('~/x', { home: '', workspace: '' })).toBe('~/x')
   })
 })
 
