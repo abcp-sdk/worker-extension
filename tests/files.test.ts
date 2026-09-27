@@ -265,6 +265,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '2',
     }).catch(e => e)
     expect(err).toBeInstanceOf(TypedToolError)
     expect((err as TypedToolError).code).toBe('permission_denied')
@@ -282,6 +284,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 5,
       'end-line': 5,
       content: 'X',
+      'start-anchor': '5',
+      'end-anchor': '5',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('permission_denied')
     expect(String(err)).toContain('2-3')
@@ -291,6 +295,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 3,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '3',
     })
     expect(decode(files)).toBe('1\nX\n4\n5\n6\n')
   })
@@ -304,12 +310,16 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '2',
     })
     const err = await editFile(ctx, {
       path: 'a.txt',
       'start-line': 2,
       'end-line': 2,
       content: 'Y',
+      'start-anchor': 'X',
+      'end-anchor': 'X',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('permission_denied')
     // re-read then edit works
@@ -319,6 +329,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'Y',
+      'start-anchor': 'X',
+      'end-anchor': 'X',
     })
     expect(decode(files)).toBe('1\nY\n3\n')
   })
@@ -333,6 +345,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '2',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('retryable')
   })
@@ -346,6 +360,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '2',
     })
     expect(decode(files)).toBe('1\nX\n3\n')
   })
@@ -359,11 +375,13 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 3,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '3',
     })
     expect(decode(files)).toBe('1\nX\n4')
   })
 
-  it('inserts when end-line < start-line', async () => {
+  it('inserts when end-line === start-line - 1', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
     const ctx = fileCtx(files)
     await readFile(ctx, { path: 'a.txt' })
@@ -372,8 +390,86 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 1,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '1',
     })
     expect(decode(files)).toBe('1\nX\n2\n3')
+  })
+
+  it('inserts at the head (only start-anchor)', async () => {
+    const files = { 'a.txt': enc('1\n2\n3') }
+    const ctx = fileCtx(files)
+    await readFile(ctx, { path: 'a.txt' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 1,
+      'end-line': 0,
+      content: 'HEAD',
+      'start-anchor': '1',
+    })
+    expect(decode(files)).toBe('HEAD\n1\n2\n3')
+  })
+
+  it('appends at the tail (only end-anchor)', async () => {
+    const files = { 'a.txt': enc('1\n2\n3') }
+    const ctx = fileCtx(files)
+    await readFile(ctx, { path: 'a.txt' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 4,
+      'end-line': 3,
+      content: 'TAIL',
+      'end-anchor': '3',
+    })
+    expect(decode(files)).toBe('1\n2\n3\nTAIL')
+  })
+
+  it('inserts into an empty file (no anchors)', async () => {
+    const files: Record<string, Uint8Array> = {}
+    const ctx = fileCtx(files)
+    await writeFile(ctx, { path: 'a.txt', content: '' })
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 1,
+      'end-line': 0,
+      content: 'first',
+    })
+    expect(decode(files)).toBe('first')
+  })
+
+  it('rejects a mismatched anchor (no write)', async () => {
+    const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
+    const ctx = fileCtx(files)
+    await readFile(ctx, { path: 'a.txt' })
+    const err = await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 2,
+      'end-line': 2,
+      content: 'X',
+      'start-anchor': 'WRONG',
+      'end-anchor': 'beta',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('retryable')
+    expect(decode(files)).toBe('alpha\nbeta\ngamma\n')
+  })
+
+  it('rejects out-of-range line numbers instead of clamping', async () => {
+    const ten =
+      Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
+    const files = { 'a.txt': enc(ten) }
+    const ctx = fileCtx(files)
+    await readFile(ctx, { path: 'a.txt' })
+    const err = await editFile(ctx, {
+      path: 'a.txt',
+      'start-line': 10,
+      'end-line': 12,
+      content: 'XXX',
+      'start-anchor': 'L10',
+      'end-anchor': 'L12',
+    }).catch(e => e)
+    expect(err).toBeInstanceOf(TypedToolError)
+    expect((err as TypedToolError).code).toBe('invalid_argument')
+    expect(decode(files)).toBe(ten)
   })
 
   it('preserves the trailing newline', async () => {
@@ -385,26 +481,10 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: 'BETA',
+      'start-anchor': 'beta',
+      'end-anchor': 'beta',
     })
     expect(decode(files)).toBe('alpha\nBETA\ngamma\n')
-  })
-
-  it('clamps [10,12] to the last line of a 10-line file (no phantom blank)', async () => {
-    const ten =
-      Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
-    const files = { 'a.txt': enc(ten) }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 10,
-      'end-line': 12,
-      content: 'XXX',
-    })
-    const lines = decode(files).split('\n')
-    expect(lines).toHaveLength(11) // 10 lines + trailing empty from final \n
-    expect(lines[9]).toBe('XXX')
-    expect(decode(files)).not.toContain('\n\n')
   })
 
   it('returns a unified diff in content', async () => {
@@ -416,6 +496,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 3,
       content: 'X',
+      'start-anchor': '2',
+      'end-anchor': '3',
     })
     expect(r.content).toContain('--- a/a.txt')
     expect(r.content).toContain('+++ b/a.txt')
@@ -435,6 +517,8 @@ describe('edit (read-before-edit guard)', () => {
       'start-line': 2,
       'end-line': 2,
       content: '2',
+      'start-anchor': '2',
+      'end-anchor': '2',
     })
     expect(String(r.content)).toContain('No changes')
     expect(decode(files)).toBe('1\n2\n3\n')
