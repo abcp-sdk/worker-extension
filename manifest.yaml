@@ -11,6 +11,17 @@ lifecycle: [deleted]
 # EXEC_WARNING: appended to exec / job-start (and their `command` argument) —
 # the remote worker already runs every job as a tracked background task, so
 # shell-level backgrounding and output redirection break observability.
+#
+# ONE sandbox list, TWO tool families. This extension drives the SAME
+# config-registered easyworker sandboxes in two ways:
+#   * worker-* tools   run shell commands / read-write files (`exec`, `read`, …)
+#   * computer-* tools drive a native GUI through the platform accessibility
+#     tree (`computer-snapshot`, `computer-action`, …) via `xa11y`/`adb`.
+# Every tool takes an optional `sandbox` argument selecting one of the
+# `sandboxes` entries by name; the first entry is the default. There is NO
+# sandbox-creation tool — sandboxes are registered in config. Not every sandbox
+# can be driven by computer-* (it needs the accessibility CLI): call
+# `list-sandboxes` to see each sandbox's OS and whether a11y is available.
 
 tools:
   - name: info
@@ -26,12 +37,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
       required: []
     required_config: [sandboxes]
@@ -62,12 +73,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         command:
           type: string
@@ -133,12 +144,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         command:
           type: string
@@ -198,12 +209,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
@@ -241,12 +252,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
@@ -271,12 +282,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
@@ -296,12 +307,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
@@ -331,12 +342,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
       required: []
     required_config: [sandboxes]
@@ -356,12 +367,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -398,12 +409,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -457,12 +468,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -519,12 +530,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -556,12 +567,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -583,12 +594,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         from:
           type: string
@@ -617,12 +628,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         from:
           type: string
@@ -651,12 +662,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         code:
           type: string
@@ -685,12 +696,12 @@ tools:
         sandbox:
           type: string
           description: >-
-            Which registered sandbox to run against (see worker-sandboxes).
+            Which registered sandbox to run against (see list-sandboxes).
             Omit when only one is configured. This selects among sandboxes set
             in config; there is no sandbox-creation tool.
           descriptions:
             zh: >-
-              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
               中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
@@ -707,16 +718,422 @@ tools:
       required: [path]
     required_config: [sandboxes]
 
-  # ---- discovery -----------------------------------------------------------
-  - name: worker-sandboxes
+  # ---- observe -------------------------------------------------------------
+  - name: computer-apps
     description: >-
-      List the sandboxes registered in this extension's config. Every other
-      worker tool takes an optional `sandbox` argument selecting one of these
-      by name (omit it when only one is configured). Sandboxes are registered
-      in config; there is no tool to create one.
+      List the running applications whose accessibility tree is visible on the
+      worker's desktop. Returns pid + name (the focused app is marked), and for
+      Android the foreground package/activity.
     descriptions:
       zh: >-
-        列出本扩展 config 中注册的沙箱。其余 worker 工具都接受一个可选的 `sandbox`
+        列出 worker 桌面上可见无障碍树的运行中应用。返回 pid + 名称（前台应用会标记），安卓则返回前台包名/Activity。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+      required: []
+    required_config: [sandboxes]
+
+  - name: computer-snapshot
+    description: >-
+      Capture the accessibility tree of an app (or the whole desktop / current
+      Android screen). This is the preferred way to understand a GUI: it returns
+      roles, names, values, states and bounds, and each element gets a stable
+      `ref` (e.g. e12) usable as `target` in the interaction tools. Prefer this
+      over computer-screenshot for deciding where to act.
+    descriptions:
+      zh: >-
+        捕获某应用的无障碍树（或整个桌面 / 当前安卓屏幕）。这是理解 GUI 的首选方式：返回角色、名称、值、状态与
+        边界框，每个元素都会得到一个稳定的 `ref`（如 e12），可作为交互工具里的 `target`。决定在哪里操作时优先用它而非
+        computer-screenshot。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        app:
+          type: string
+          description: >-
+            Application to snapshot (name or pid). Empty = the whole desktop
+            (Linux) / current screen (Android).
+          descriptions:
+            zh: 要快照的应用（名称或 pid）。留空 = 整个桌面（Linux）/ 当前屏幕（安卓）。
+        depth:
+          type: number
+          description: Limit the depth of the tree.
+          descriptions:
+            zh: 限制树的深度。
+      required: []
+    required_config: [sandboxes]
+
+  - name: computer-find
+    description: >-
+      Find elements matching a CSS-like accessibility selector on the worker,
+      optionally returning each match's center coordinates or bounds. On Linux
+      the selector syntax is xa11y's (e.g. `button[name='OK']`,
+      `text_field[name^='Search']`, `group > button`, `button:nth(2)`). Use the
+      returned ref as `target` for interaction tools.
+    descriptions:
+      zh: >-
+        在 worker 上查找匹配某个类 CSS 无障碍选择器的元素，可选返回每个匹配的中心坐标或边界框。Linux 上选择器语法为 xa11y
+        的（如 `button[name='OK']`、`text_field[name^='Search']`、`group > button`、`button:nth(2)`）。把返回的
+        ref 作为交互工具的 `target`。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        selector:
+          type: string
+          description: The accessibility selector to match.
+          descriptions:
+            zh: 要匹配的无障碍选择器。
+        app:
+          type: string
+          description: Restrict the search to one application (name or pid).
+          descriptions:
+            zh: 将搜索限定到某个应用（名称或 pid）。
+        output:
+          type: string
+          enum: [pretty, bounds, center]
+          description: >-
+            pretty = one line per match (default); bounds = `x,y,w,h`; center =
+            `x,y`.
+          descriptions:
+            zh: pretty = 每个匹配一行（默认）；bounds = `x,y,w,h`；center = `x,y`。
+      required: [selector]
+    required_config: [sandboxes]
+
+  # ---- interact (accessibility actions, coordinates as fallback) -----------
+  - name: computer-action
+    description: >-
+      Perform an accessibility action on an element. Prefer this over coordinate
+      clicks: it drives the app through its accessibility API and does not
+      depend on focus/cursor state. Actions: press (click/invoke), focus, blur,
+      toggle, expand, collapse, select, show-menu, scroll-into-view, increment,
+      decrement, set-value (needs value), type-text (needs value).
+    descriptions:
+      zh: >-
+        对元素执行无障碍操作。优先用它而非坐标点击：它通过无障碍 API 驱动应用，不依赖焦点/光标状态。动作：press（点击/调用）、focus、blur、toggle、expand、collapse、select、show-menu、scroll-into-view、increment、decrement、set-value（需 value）、type-text（需 value）。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        action:
+          type: string
+          enum: [press, focus, blur, toggle, expand, collapse, select, show-menu, scroll-into-view, increment, decrement, set-value, type-text]
+          description: The action to perform.
+          descriptions:
+            zh: 要执行的动作。
+        target:
+          type: string
+          description: >-
+            Element ref from computer-snapshot (e.g. e12) or a selector.
+          descriptions:
+            zh: 来自 computer-snapshot 的元素 ref（如 e12）或选择器。
+        value:
+          type: string
+          description: Value for set-value / type-text.
+          descriptions:
+            zh: set-value / type-text 的值。
+        app:
+          type: string
+          description: Restrict to one application (name or pid).
+          descriptions:
+            zh: 限定到某个应用（名称或 pid）。
+      required: [action, target]
+    required_config: [sandboxes]
+
+  - name: computer-click
+    description: >-
+      Click at screen coordinates (x,y). Use this only when no accessibility
+      element matches (canvas/unknown widgets); otherwise prefer computer-action
+      with a snapshot ref.
+    descriptions:
+      zh: >-
+        在屏幕坐标 (x,y) 处点击。仅当没有无障碍元素匹配时（画布/未知控件）使用；否则优先用 computer-action 配合快照
+        ref。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        x:
+          type: number
+          description: X coordinate (pixels).
+          descriptions:
+            zh: X 坐标（像素）。
+        y:
+          type: number
+          description: Y coordinate (pixels).
+          descriptions:
+            zh: Y 坐标（像素）。
+        button:
+          type: string
+          enum: [left, right, middle]
+          description: Mouse button (default left).
+          descriptions:
+            zh: 鼠标键（默认 left）。
+        count:
+          type: number
+          description: Click count, e.g. 2 for a double click (default 1).
+          descriptions:
+            zh: 点击次数，如 2 表示双击（默认 1）。
+      required: [x, y]
+    required_config: [sandboxes]
+
+  - name: computer-type
+    description: >-
+      Type text into the focused element (or a named element first). For a text
+      field with a snapshot ref, computer-action set-value is more reliable.
+    descriptions:
+      zh: >-
+        向当前聚焦元素输入文本（或先聚焦某个命名元素）。对有快照 ref 的文本框，computer-action set-value 更可靠。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        text:
+          type: string
+          description: The text to type.
+          descriptions:
+            zh: 要输入的文本。
+        target:
+          type: string
+          description: >-
+            Element ref/selector to focus first (optional).
+          descriptions:
+            zh: 先聚焦的元素 ref/选择器（可选）。
+        submit:
+          type: boolean
+          description: Press Enter after typing.
+          descriptions:
+            zh: 输入后按 Enter。
+      required: [text]
+    required_config: [sandboxes]
+
+  - name: computer-key
+    description: >-
+      Press a key or key combination on the keyboard (e.g. `Return`, `Tab`,
+      `ctrl+c`, `alt+F4`).
+    descriptions:
+      zh: 按下某个键或组合键（如 `Return`、`Tab`、`ctrl+c`、`alt+F4`）。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        key:
+          type: string
+          description: Key name or combination.
+          descriptions:
+            zh: 键名或组合键。
+        held:
+          type: array
+          description: Additional keys held during the press.
+          descriptions:
+            zh: 按下期间额外按住的键。
+          items:
+            type: string
+      required: [key]
+    required_config: [sandboxes]
+
+  - name: computer-scroll
+    description: >-
+      Scroll at a screen position. dx/dy are scroll deltas (positive dy scrolls
+      down).
+    descriptions:
+      zh: 在某个屏幕位置滚动。dx/dy 为滚动增量（dy 为正表示向下滚动）。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        x:
+          type: number
+          description: X coordinate to scroll at.
+          descriptions:
+            zh: 滚动位置的 X 坐标。
+        y:
+          type: number
+          description: Y coordinate to scroll at.
+          descriptions:
+            zh: 滚动位置的 Y 坐标。
+        dx:
+          type: number
+          description: Horizontal delta.
+          descriptions:
+            zh: 水平增量。
+        dy:
+          type: number
+          description: Vertical delta.
+          descriptions:
+            zh: 垂直增量。
+      required: [x, y]
+    required_config: [sandboxes]
+
+  - name: computer-drag
+    description: >-
+      Drag from one screen position to another (e.g. drag-and-drop). On Android
+      this is a swipe.
+    descriptions:
+      zh: 从一个屏幕位置拖拽到另一个（如拖放）。安卓上为滑动。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        from_x:
+          type: number
+          description: Start X coordinate.
+          descriptions:
+            zh: 起点 X 坐标。
+        from_y:
+          type: number
+          description: Start Y coordinate.
+          descriptions:
+            zh: 起点 Y 坐标。
+        to_x:
+          type: number
+          description: End X coordinate.
+          descriptions:
+            zh: 终点 X 坐标。
+        to_y:
+          type: number
+          description: End Y coordinate.
+          descriptions:
+            zh: 终点 Y 坐标。
+        duration_ms:
+          type: number
+          description: Duration in milliseconds.
+          descriptions:
+            zh: 持续时长（毫秒）。
+      required: [from_x, from_y, to_x, to_y]
+    required_config: [sandboxes]
+
+  # ---- visual --------------------------------------------------------------
+  - name: computer-screenshot
+    description: >-
+      Capture the screen as a PNG, stored and returned as a file:<code>
+      reference. Use computer-snapshot for deciding where to act; use a
+      screenshot to see rendering (images, canvases, games).
+    descriptions:
+      zh: >-
+        将屏幕截取为 PNG，存储并以 file:<code> 引用返回。决定在哪里操作用 computer-snapshot；查看渲染（图片、画布、游戏）用截图。
+    input_schema:
+      type: object
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to drive (see list-sandboxes). Omit
+            when only one is configured. This selects among sandboxes set in
+            config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 list-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
+        region:
+          type: string
+          description: >-
+            Optional capture region `x,y,w,h`. Empty = full screen.
+          descriptions:
+            zh: 可选的截取区域 `x,y,w,h`。留空 = 全屏。
+      required: []
+    required_config: [sandboxes]
+
+  # ---- discovery -----------------------------------------------------------
+  - name: list-sandboxes
+    description: >-
+      List the sandboxes registered in this extension's config, one per line as
+      `name<TAB>os<TAB>a11y=yes|no`. `os` is the sandbox's operating system
+      (linux/macos/windows/android) and `a11y` says whether the computer-*
+      tools can drive its GUI (the accessibility CLI is installed). The
+      worker-* tools (exec/files) run on EVERY sandbox; the computer-* tools
+      (GUI) require `a11y=yes`. Every tool takes an optional `sandbox` argument
+      selecting one of these by name (omit it when only one is configured).
+      Sandboxes are registered in config; there is no tool to create one.
+    descriptions:
+      zh: >-
+        列出本扩展 config 中注册的沙箱，每行一个，格式为
+        `name<TAB>os<TAB>a11y=yes|no`。`os` 是沙箱操作系统（linux/macos/windows/android），
+        `a11y` 表示 computer-* 工具能否驱动其 GUI（是否安装了无障碍 CLI）。worker-* 工具（exec/文件）
+        在所有沙箱上都能运行；computer-* 工具（GUI）需要 `a11y=yes`。所有工具都接受一个可选的 `sandbox`
         参数按名称选择其中之一（仅配置一个时可省略）。沙箱在 config 中注册；没有创建沙箱的工具。
     input_schema:
       type: object
@@ -731,10 +1148,14 @@ config:
     default: ''
     description: >-
       JSON list of sandboxes this extension may run against, each
-      {"name":"...","url":"http://worker:80","token":"..."}. A tool's `sandbox`
-      argument selects one by name; the first is the default when omitted.
+      {"name":"...","url":"http://worker:80","token":"..."}. The worker-*
+      (exec/files) and computer-* (GUI) tools all address these same sandboxes;
+      a tool's `sandbox` argument selects one by name and the first is the
+      default when omitted. The computer-* tools additionally require the
+      sandbox to have the accessibility CLI (see list-sandboxes `a11y`).
     descriptions:
       zh: >-
         本扩展可操作的沙箱列表（JSON），每项
-        {"name":"...","url":"http://worker:80","token":"..."}。工具的 `sandbox`
-        参数按名称选择其一；省略时用第一个作为默认。
+        {"name":"...","url":"http://worker:80","token":"..."}。worker-*（exec/文件）与
+        computer-*（GUI）工具都作用于这同一批沙箱；工具的 `sandbox` 参数按名称选择其一，省略时用第一个作为默认。
+        computer-* 工具还要求该沙箱安装无障碍 CLI（见 list-sandboxes 的 `a11y`）。

@@ -23,6 +23,16 @@ function stubClient(): WorkerClient {
 }
 
 const EXPECTED_TOOLS = [
+  'computer-action',
+  'computer-apps',
+  'computer-click',
+  'computer-drag',
+  'computer-find',
+  'computer-key',
+  'computer-screenshot',
+  'computer-scroll',
+  'computer-snapshot',
+  'computer-type',
   'copy',
   'delete',
   'download',
@@ -36,11 +46,11 @@ const EXPECTED_TOOLS = [
   'job-start',
   'job-wait',
   'list',
+  'list-sandboxes',
   'move',
   'read',
   'upload',
   'write',
-  'worker-sandboxes',
 ].sort()
 
 describe('worker extension registration', () => {

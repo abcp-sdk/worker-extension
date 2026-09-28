@@ -150,6 +150,70 @@ export const CATALOG = {
     zh: "已上传 '{path}' 为 file:{code}（{mime}，{bytes} 字节）。",
   },
 
+  // ---- computer-use (GUI via accessibility) ----
+  a11yMissing: {
+    en: 'the accessibility CLI (xa11y) is not available in sandbox {sandbox} (or the accessibility bus is not running). Rebuild the sandbox image with xa11y (see agent-toolchain/desktop and agent-toolchain/vm).',
+    zh: '沙箱 {sandbox} 中没有无障碍 CLI（xa11y），或无障碍总线未运行。请用带 xa11y 的镜像重建沙箱（见 agent-toolchain/desktop 与 agent-toolchain/vm）。',
+  },
+  noApps: {
+    en: 'No applications found.',
+    zh: '未找到应用。',
+  },
+  noMatches: {
+    en: 'no elements matched selector: {selector}',
+    zh: '没有元素匹配选择器：{selector}',
+  },
+  findByRefHint: {
+    en: 'Tip: call computer-snapshot first to get element refs, or use a selector like button[name="OK"].',
+    zh: '提示：先调用 computer-snapshot 获取元素 ref，或使用类似 button[name="OK"] 的选择器。',
+  },
+  actionDone: {
+    en: 'Performed {action} on {target}.',
+    zh: '已对 {target} 执行 {action}。',
+  },
+  clickedAt: {
+    en: 'Clicked at ({x},{y}).',
+    zh: '已在 ({x},{y}) 点击。',
+  },
+  typedText: {
+    en: 'Typed {count} character(s).',
+    zh: '已输入 {count} 个字符。',
+  },
+  pressedKey: {
+    en: 'Pressed {key}.',
+    zh: '已按下 {key}。',
+  },
+  scrolled: {
+    en: 'Scrolled at ({x},{y}) by ({dx},{dy}).',
+    zh: '已在 ({x},{y}) 滚动 ({dx},{dy})。',
+  },
+  dragged: {
+    en: 'Dragged ({fromX},{fromY}) -> ({toX},{toY}).',
+    zh: '已拖拽 ({fromX},{fromY}) -> ({toX},{toY})。',
+  },
+  screenshotStored: {
+    en: 'Screenshot stored as file:{code} ({width}x{height}).',
+    zh: '截图已存储为 file:{code}（{width}x{height}）。',
+  },
+  screenshotFailed: {
+    en: 'screenshot failed: {reason}',
+    zh: '截图失败：{reason}',
+  },
+
+  // ---- list-sandboxes ----
+  sandboxLine: {
+    en: '{name}\t{os}\ta11y={a11y}',
+    zh: '{name}\t{os}\ta11y={a11y}',
+  },
+  sandboxA11yYes: {
+    en: 'yes',
+    zh: 'yes',
+  },
+  sandboxA11yNo: {
+    en: 'no',
+    zh: 'no',
+  },
+
   // ---- truncation / paging notes ----
   truncatedAfter: {
     en: '... truncated after {shown} of {total} lines ({why}); narrow the range (offset/limit) to see more.',

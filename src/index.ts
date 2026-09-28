@@ -16,7 +16,13 @@ import {
   type WorkerEndpoint,
   workerAnchors,
 } from './client.js'
-import { sandboxConfig, sandboxNames } from './config.js'
+import {
+  probeCapabilities,
+  type SandboxCapabilities,
+} from './computer/capabilities.js'
+import { probeTarget, type SandboxTarget } from './computer/target.js'
+import * as C from './computer/tools.js'
+import { sandboxConfig, sandboxList, type WorkerConfig } from './config.js'
 import { agentFileDeps, type WorkerDeps } from './deps.js'
 import { localeOf, tr } from './i18n.js'
 import {
@@ -51,6 +57,9 @@ export const EXT_ID = 'worker'
  */
 const PATH_KEYS = ['path', 'dest', 'from', 'to', 'workdir'] as const
 
+/** How long a probed target / capability list is reused before re-probing. */
+const PROBE_TTL_MS = 30_000
+
 /** Tool schemas + descriptions come from the manifest; code supplies handlers. */
 const manifest = parseManifest(manifestYaml)
 
@@ -65,12 +74,15 @@ export interface WorkerExtensionOpts {
 }
 
 /**
- * Build the worker extension: run commands and read/write files in ONE fixed
- * easyworker sandbox, addressed by `worker-url`/`worker-token`. This is the
- * stable single-worker variant; the `workspace` extension adds dynamic sandbox
- * lifecycle + a Forgejo (git) backend on top.
+ * Build the worker extension: run commands, read/write files, AND drive a
+ * native GUI (through the platform accessibility tree) in the SAME set of
+ * config-registered easyworker sandboxes. Every tool takes an optional
+ * `sandbox` argument selecting one of the `sandboxes` entries by name; the
+ * `worker-*` tools (exec/files) and the `computer-*` tools (GUI) address the
+ * same sandboxes. The `workspace` extension adds dynamic sandbox lifecycle +
+ * a Forgejo (git) backend on top.
  *
- * `bus` is only needed for the agent file RPCs (download/upload).
+ * `bus` is only needed for the agent file RPCs (download/upload/screenshot).
  */
 export function createWorkerConfig(
   bus: Bus | undefined,
@@ -79,6 +91,13 @@ export function createWorkerConfig(
   const deps = opts.deps ?? (bus !== undefined ? agentFileDeps(bus) : undefined)
   const cache = new WorkerClientCache()
   const makeClient = opts.makeClient ?? ((ep: WorkerEndpoint) => cache.get(ep))
+
+  // Resolved computer-use targets keyed by `(url, token)`; a short-lived memo
+  // avoids re-running info + probe for a burst of tool calls.
+  const targets = new Map<string, { target: SandboxTarget; at: number }>()
+  const caps = new Map<string, { value: SandboxCapabilities; at: number }>()
+  const endpointKey = (cfg: WorkerConfig): string =>
+    `${cfg.url}\u0000${cfg.token}`
 
   /** The `sandbox` argument of a call ('' = the first configured sandbox). */
   const wantedOf = (args: Record<string, unknown>): string =>
@@ -91,6 +110,21 @@ export function createWorkerConfig(
     wanted: string,
   ): WorkerClient =>
     makeClient(sandboxConfig(opts.getConfig, session, tenant, locale, wanted))
+
+  /** Resolve a sandbox to a probed computer-use target (cached). */
+  const resolveTarget = async (
+    cfg: WorkerConfig,
+    locale: string,
+  ): Promise<SandboxTarget> => {
+    const key = endpointKey(cfg)
+    const hit = targets.get(key)
+    if (hit !== undefined && Date.now() - hit.at < PROBE_TTL_MS)
+      return hit.target
+    const client = makeClient(cfg)
+    const target = await probeTarget(client, cfg.name || cfg.url, locale)
+    targets.set(key, { target, at: Date.now() })
+    return target
+  }
 
   /** Wrap a worker tool. */
   const wrap =
@@ -181,6 +215,38 @@ export function createWorkerConfig(
     }
   }
 
+  /**
+   * Wrap a computer-use tool: resolve the `sandbox` argument to a probed GUI
+   * target (detect platform, verify the accessibility CLI) and inject the
+   * computer-use call context. Same sandboxes as the worker tools.
+   */
+  const computerWrap =
+    (
+      fn: (
+        ctx: C.ToolCtx,
+        t: SandboxTarget,
+        args: Record<string, unknown>,
+      ) => Promise<ToolResultData>,
+    ): ToolSpec['execute'] =>
+    async (args, _callId, sessionName, _signal, tenant) => {
+      const t = tenant ?? ''
+      const s = sessionName ?? ''
+      const locale = await localeOf(deps, t, s)
+      if (deps === undefined) {
+        throw new TypedToolError('internal', tr('en', 'fileToolsRequireBus'))
+      }
+      const a = args ?? {}
+      const cfg = sandboxConfig(opts.getConfig, s, t, locale, wantedOf(a))
+      const target = await resolveTarget(cfg, locale)
+      const toolCtx: C.ToolCtx = {
+        deps,
+        locale,
+        tenant: t,
+        session: s,
+      }
+      return fn(toolCtx, target, a)
+    }
+
   const handlers: Handlers = {
     info: wrap(async ({ client, url, locale }) => {
       const info = await client.info({})
@@ -230,23 +296,62 @@ export function createWorkerConfig(
     copy: fileWrap(copyFile),
     download: fileWrap(downloadFile),
     upload: fileWrap(uploadFile),
-    // List the sandboxes registered in config (no creation — config only).
-    'worker-sandboxes': async (
-      _args,
-      _callId,
-      sessionName,
-      _signal,
-      tenant,
-    ) => {
+
+    // ---- computer-use (GUI) — the SAME sandboxes as the worker tools ------
+    'computer-apps': computerWrap(C.apps),
+    'computer-snapshot': computerWrap(C.snapshot),
+    'computer-find': computerWrap(C.find),
+    'computer-action': computerWrap(C.action),
+    'computer-click': computerWrap(C.click),
+    'computer-type': computerWrap(C.typeText),
+    'computer-key': computerWrap(C.key),
+    'computer-scroll': computerWrap(C.scroll),
+    'computer-drag': computerWrap(C.drag),
+    'computer-screenshot': computerWrap(C.screenshot),
+
+    // ---- discovery -------------------------------------------------------
+    // List every registered sandbox with its OS and whether the computer-use
+    // tools can drive its GUI (a11y CLI present). Cached to avoid re-probing
+    // all sandboxes on every call.
+    'list-sandboxes': async (_args, _callId, sessionName, _signal, tenant) => {
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
-      const names = sandboxNames(opts.getConfig, s, t)
-      return {
-        content:
-          names.length === 0 ? tr(locale, 'sandboxNone') : names.join('\n'),
-        data: { sandboxes: names },
+      const list = sandboxList(opts.getConfig, s, t)
+      if (list.length === 0) {
+        return {
+          content: tr(locale, 'sandboxNone'),
+          data: { sandboxes: [] },
+        }
       }
+      const rows = await Promise.all(
+        list.map(async cfg => {
+          const key = endpointKey(cfg)
+          const hit = caps.get(key)
+          if (hit !== undefined && Date.now() - hit.at < PROBE_TTL_MS) {
+            return { cfg, caps: hit.value }
+          }
+          const value = await probeCapabilities(makeClient(cfg))
+          caps.set(key, { value, at: Date.now() })
+          return { cfg, caps: value }
+        }),
+      )
+      const sandboxes = rows.map(({ cfg, caps: c }) => ({
+        name: cfg.name,
+        os: c.os,
+        platform: c.platform,
+        a11y: c.a11y,
+      }))
+      const content = rows
+        .map(({ cfg, caps: c }) =>
+          tr(locale, 'sandboxLine', {
+            name: cfg.name,
+            os: c.os === '' ? c.platform : c.os,
+            a11y: tr(locale, c.a11y ? 'sandboxA11yYes' : 'sandboxA11yNo'),
+          }),
+        )
+        .join('\n')
+      return { content, data: { sandboxes } }
     },
   }
 

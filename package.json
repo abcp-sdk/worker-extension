@@ -1,7 +1,7 @@
 {
   "name": "@abc-protocol/worker-extension",
   "version": "0.2.0",
-  "description": "Worker extension server: run commands and read/write files in ONE fixed remote easyworker sandbox (worker-url + worker-token). The stable single-worker variant; see workspace-extension for dynamic sandboxes + git.",
+  "description": "Sandbox extension server: run commands, read/write files, AND drive a native GUI (accessibility tree) in the SAME set of config-registered easyworker sandboxes (worker-* and computer-* tools).",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

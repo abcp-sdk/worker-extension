@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseSandboxes, sandboxConfig, sandboxNames } from '../src/config.js'
+import {
+  parseSandboxes,
+  sandboxConfig,
+  sandboxList,
+  sandboxNames,
+} from '../src/config.js'
 
 const get =
   (m: Record<string, string>) =>
@@ -61,8 +66,28 @@ describe('sandboxConfig', () => {
 describe('sandboxNames', () => {
   it('lists configured names (empty when unset)', () => {
     expect(
-      sandboxNames(get({ sandboxes: JSON.stringify([{ name: 'a', url: 'u' }]) }), '', 't'),
+      sandboxNames(
+        get({ sandboxes: JSON.stringify([{ name: 'a', url: 'u' }]) }),
+        '',
+        't',
+      ),
     ).toEqual(['a'])
     expect(sandboxNames(get({}), '', 't')).toEqual([])
+  })
+})
+
+describe('sandboxList', () => {
+  it('returns full endpoints in config order (empty when unset)', () => {
+    const g = get({
+      sandboxes: JSON.stringify([
+        { name: 'a', url: 'http://a:80', token: 'ta' },
+        { name: 'b', url: 'http://b:80', token: 'tb' },
+      ]),
+    })
+    expect(sandboxList(g, '', 't')).toEqual([
+      { name: 'a', url: 'http://a:80', token: 'ta' },
+      { name: 'b', url: 'http://b:80', token: 'tb' },
+    ])
+    expect(sandboxList(get({}), '', 't')).toEqual([])
   })
 })

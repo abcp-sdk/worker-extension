@@ -80,6 +80,17 @@ export function sandboxNames(
   )
 }
 
+/** Every configured sandbox endpoint, in config order. */
+export function sandboxList(
+  get: GetConfig,
+  session: string,
+  tenant: string,
+): WorkerConfig[] {
+  return parseSandboxes(cfgRaw(get, CONFIG.sandboxes, session, tenant)).map(
+    s => ({ name: s.name, url: s.url, token: s.token }),
+  )
+}
+
 /**
  * Resolve the sandbox endpoint for a tool call. `wanted` is the optional
  * `sandbox` argument: empty selects the first configured sandbox; a name
