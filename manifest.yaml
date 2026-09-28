@@ -22,9 +22,19 @@ tools:
       zh: 查看所连 easyworker 的环境：OS/架构、shell、工作区根目录、主目录（`~`）、服务域名与 boot id。文件工具的 `~` 前缀即指该主目录。
     input_schema:
       type: object
-      properties: {}
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
       required: []
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: exec
     description: >-
@@ -49,6 +59,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         command:
           type: string
           description: >-
@@ -87,7 +107,7 @@ tools:
           additionalProperties:
             type: string
       required: [command]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-start
     description: >-
@@ -110,6 +130,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         command:
           type: string
           description: >-
@@ -154,7 +184,7 @@ tools:
           additionalProperties:
             type: string
       required: [command]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-output
     description: >-
@@ -165,6 +195,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
           description: Background job id.
@@ -187,7 +227,7 @@ tools:
           descriptions:
             zh: 读取哪个流（默认 all）。
       required: [job-id]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-wait
     description: >-
@@ -198,6 +238,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
           description: Background job id.
@@ -209,7 +259,7 @@ tools:
           descriptions:
             zh: 等待上限（秒，默认 60，最大 600）。
       required: [job-id]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-kill
     description: Kill a job and its whole process tree.
@@ -218,13 +268,23 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
           description: Background job id.
           descriptions:
             zh: 后台任务 id。
       required: [job-id]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-stdin
     description: Write to a job's stdin, optionally closing it.
@@ -233,6 +293,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         job-id:
           type: string
           description: Background job id.
@@ -249,7 +319,7 @@ tools:
           descriptions:
             zh: 写入后关闭 stdin。
       required: [job-id]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: job-list
     description: List jobs registered in the worker (id, state, exit code, command).
@@ -257,9 +327,19 @@ tools:
       zh: 列出 worker 中登记的任务（id、状态、退出码、命令）。
     input_schema:
       type: object
-      properties: {}
+      properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
       required: []
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: read
     description: >-
@@ -273,6 +353,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -291,7 +381,7 @@ tools:
           descriptions:
             zh: 最多行数（默认 200，最大 1000）。
       required: [path]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: write
     description: >-
@@ -305,6 +395,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -318,7 +418,7 @@ tools:
           descriptions:
             zh: 完整文件内容。
       required: [path, content]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: edit
     description: >-
@@ -354,6 +454,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -395,7 +505,7 @@ tools:
           descriptions:
             zh: 你对编辑区下方那条【不变】行（第 end-line + 1 行）当前原文的抄写，来自 read 输出、去掉行号前缀。不是被编辑的行。end-line == 总行数（无下方行）时传空字符串。
       required: [path, start-line, end-line, anchor-before, anchor-after]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: list
     description: >-
@@ -406,6 +516,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -424,7 +544,7 @@ tools:
           descriptions:
             zh: 展开层数（默认 3）。
       required: [path]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: delete
     description: Delete a file or a whole directory tree in the workspace.
@@ -433,6 +553,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -441,7 +571,7 @@ tools:
           descriptions:
             zh: 文件或目录路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [path]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: move
     description: Move or rename a file / directory tree to a new path.
@@ -450,6 +580,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         from:
           type: string
           description: >-
@@ -465,7 +605,7 @@ tools:
           descriptions:
             zh: 目标路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [from, to]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: copy
     description: Copy a file / directory tree onto a new path (recursively).
@@ -474,6 +614,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         from:
           type: string
           description: >-
@@ -489,7 +639,7 @@ tools:
           descriptions:
             zh: 目标路径：相对工作区根、绝对路径，或以 `~`（worker 主目录）开头。
       required: [from, to]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: download
     description: Download a stored file (agent `file:<code>`) into the workspace at `path`.
@@ -498,6 +648,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         code:
           type: string
           description: File code (with or without the `file:` prefix).
@@ -511,7 +671,7 @@ tools:
           descriptions:
             zh: 工作区中的目标路径：相对、绝对，或以 `~`（worker 主目录）开头。
       required: [code, path]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
 
   - name: upload
     description: >-
@@ -522,6 +682,16 @@ tools:
     input_schema:
       type: object
       properties:
+        sandbox:
+          type: string
+          description: >-
+            Which registered sandbox to run against (see worker-sandboxes).
+            Omit when only one is configured. This selects among sandboxes set
+            in config; there is no sandbox-creation tool.
+          descriptions:
+            zh: >-
+              要操作的已注册沙箱（见 worker-sandboxes）。仅配置一个时可省略。它只在 config
+              中已注册的沙箱间选择；没有创建沙箱的工具。
         path:
           type: string
           description: >-
@@ -535,20 +705,36 @@ tools:
           descriptions:
             zh: 存储文件名（默认取 basename）。
       required: [path]
-    required_config: [worker-url, worker-token]
+    required_config: [sandboxes]
+
+  # ---- discovery -----------------------------------------------------------
+  - name: worker-sandboxes
+    description: >-
+      List the sandboxes registered in this extension's config. Every other
+      worker tool takes an optional `sandbox` argument selecting one of these
+      by name (omit it when only one is configured). Sandboxes are registered
+      in config; there is no tool to create one.
+    descriptions:
+      zh: >-
+        列出本扩展 config 中注册的沙箱。其余 worker 工具都接受一个可选的 `sandbox`
+        参数按名称选择其中之一（仅配置一个时可省略）。沙箱在 config 中注册；没有创建沙箱的工具。
+    input_schema:
+      type: object
+      properties: {}
+      required: []
+    required_config: [sandboxes]
 
 config:
-  - name: worker-url
+  - name: sandboxes
     type: string
     scope: global
     default: ''
-    description: Base URL of the easyworker sandbox (e.g. http://127.0.0.1:9090).
+    description: >-
+      JSON list of sandboxes this extension may run against, each
+      {"name":"...","url":"http://worker:80","token":"..."}. A tool's `sandbox`
+      argument selects one by name; the first is the default when omitted.
     descriptions:
-      zh: easyworker 沙箱的基础地址（如 http://127.0.0.1:9090）。
-  - name: worker-token
-    type: string
-    scope: global
-    default: ''
-    description: easyworker bearer token (empty only when the worker has auth disabled).
-    descriptions:
-      zh: easyworker 的 bearer 令牌（仅当 worker 关闭鉴权时才可留空）。
+      zh: >-
+        本扩展可操作的沙箱列表（JSON），每项
+        {"name":"...","url":"http://worker:80","token":"..."}。工具的 `sandbox`
+        参数按名称选择其一；省略时用第一个作为默认。

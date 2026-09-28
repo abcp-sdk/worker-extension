@@ -40,6 +40,7 @@ const EXPECTED_TOOLS = [
   'read',
   'upload',
   'write',
+  'worker-sandboxes',
 ].sort()
 
 describe('worker extension registration', () => {
@@ -90,15 +91,15 @@ describe('worker extension registration', () => {
     const names = (manifest?.tools ?? []).map(t => t.name).sort()
     expect(names).toEqual(EXPECTED_TOOLS)
 
-    // Every tool gates on worker-url + worker-token.
+    // Every tool gates on the `sandboxes` list.
     for (const t of manifest?.tools ?? []) {
       expect(t.required_config, t.name).toEqual(WORKER_REQUIRED)
     }
     const config = (manifest?.config ?? []).map(c => c.name).sort()
-    expect(config).toEqual([CONFIG.workerUrl, CONFIG.workerToken].sort())
+    expect(config).toEqual([CONFIG.sandboxes].sort())
   })
 
-  it('disables a tool call until worker-url/token are configured', async () => {
+  it('disables a tool call until sandboxes are configured', async () => {
     const server = await start({ storage: 'memory' })
     const url = `nats://127.0.0.1:${server.port}`
     stops.push(() => server.stop())

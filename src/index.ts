@@ -16,7 +16,7 @@ import {
   type WorkerEndpoint,
   workerAnchors,
 } from './client.js'
-import { workerConfig } from './config.js'
+import { sandboxConfig, sandboxNames } from './config.js'
 import { agentFileDeps, type WorkerDeps } from './deps.js'
 import { localeOf, tr } from './i18n.js'
 import {
@@ -80,12 +80,17 @@ export function createWorkerConfig(
   const cache = new WorkerClientCache()
   const makeClient = opts.makeClient ?? ((ep: WorkerEndpoint) => cache.get(ep))
 
+  /** The `sandbox` argument of a call ('' = the first configured sandbox). */
+  const wantedOf = (args: Record<string, unknown>): string =>
+    typeof args['sandbox'] === 'string' ? String(args['sandbox']).trim() : ''
+
   const clientFor = (
     session: string,
     tenant: string,
     locale: string,
+    wanted: string,
   ): WorkerClient =>
-    makeClient(workerConfig(opts.getConfig, session, tenant, locale))
+    makeClient(sandboxConfig(opts.getConfig, session, tenant, locale, wanted))
 
   /** Wrap a worker tool. */
   const wrap =
@@ -105,9 +110,9 @@ export function createWorkerConfig(
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
-      const cfg = workerConfig(opts.getConfig, s, t, locale)
-      const client = makeClient(cfg)
       const a = args ?? {}
+      const cfg = sandboxConfig(opts.getConfig, s, t, locale, wantedOf(a))
+      const client = makeClient(cfg)
       const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
@@ -132,8 +137,8 @@ export function createWorkerConfig(
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
-      const client = clientFor(s, t, locale)
       const a = args ?? {}
+      const client = clientFor(s, t, locale, wantedOf(a))
       const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
@@ -160,8 +165,8 @@ export function createWorkerConfig(
       const t = tenant ?? ''
       const s = sessionName ?? ''
       const locale = await localeOf(deps, t, s)
-      const client = clientFor(s, t, locale)
       const a = args ?? {}
+      const client = clientFor(s, t, locale, wantedOf(a))
       const expanded = expandPathArgs(a, PATH_KEYS, await workerAnchors(client))
       return fn(
         {
@@ -225,6 +230,24 @@ export function createWorkerConfig(
     copy: fileWrap(copyFile),
     download: fileWrap(downloadFile),
     upload: fileWrap(uploadFile),
+    // List the sandboxes registered in config (no creation — config only).
+    'worker-sandboxes': async (
+      _args,
+      _callId,
+      sessionName,
+      _signal,
+      tenant,
+    ) => {
+      const t = tenant ?? ''
+      const s = sessionName ?? ''
+      const locale = await localeOf(deps, t, s)
+      const names = sandboxNames(opts.getConfig, s, t)
+      return {
+        content:
+          names.length === 0 ? tr(locale, 'sandboxNone') : names.join('\n'),
+        data: { sandboxes: names },
+      }
+    },
   }
 
   // Tool metadata comes from manifest.yaml; only `execute` is wired here. The

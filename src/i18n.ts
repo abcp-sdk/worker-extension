@@ -181,6 +181,14 @@ export const CATALOG = {
     en: "{name} is not configured; set it in the extension's tool settings",
     zh: '未配置 {name}；请在扩展的工具设置中填写。',
   },
+  unknownTarget: {
+    en: 'unknown sandbox `{target}`; configured sandboxes: {known}',
+    zh: '未知 sandbox `{target}`；已配置的 sandbox：{known}',
+  },
+  sandboxNone: {
+    en: '(no sandboxes configured)',
+    zh: '（未配置 sandbox）',
+  },
   fileToolsRequireBus: {
     en: 'file tools require an agent bus (download/upload)',
     zh: '文件工具需要 agent bus（download/upload）。',
