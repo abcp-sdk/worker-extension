@@ -152,7 +152,7 @@ export async function execCommand(
 }
 
 /** `job-start`: fire-and-forget; returns the job id only. An optional
- *  `timeout` (seconds, max 600) arms the worker-native wall-clock deadline:
+ *  `timeout` (seconds, max 300) arms the worker-native wall-clock deadline:
  *  at expiry the job's whole process tree is killed (state `killed`) — the
  *  recorded output is preserved, unlike wrapping the command in `timeout`. */
 export async function jobStart(
@@ -162,7 +162,7 @@ export async function jobStart(
   const command = requireArg(args, 'command', ctx.locale)
   const workdir = strArg(args, 'workdir')
   const env = envArg(args)
-  const timeoutS = clampInt(numArg(args, 'timeout'), 0, 600)
+  const timeoutS = clampInt(numArg(args, 'timeout'), 0, 300)
   const started = await ctx.client.execute({
     command,
     workdir,
@@ -229,7 +229,7 @@ export async function jobWait(
   args: Record<string, unknown>,
 ): Promise<ToolResultData> {
   const jobId = requireArg(args, 'job-id', ctx.locale)
-  const timeoutS = secondsArg(args, 60, 600)
+  const timeoutS = secondsArg(args, 60, 300)
   const done = await waitForJob(ctx.client, jobId, timeoutS * 1000, ctx.signal)
   const { text } = await renderOutput(
     ctx.client,

@@ -69,7 +69,7 @@ and resolves its sandbox from `sandboxes` at call time.
 | `exec` | `Execute` + `JobWait` loops + `JobOutput` | short tasks; waits ≤ `timeout` s (default 5, max 60). Always returns `job-id`; on completion up to 1000 lines, on timeout the **oldest 200** lines + "still running" |
 | `job-start` | `Execute` | fire-and-forget long task; returns `job-id` only |
 | `job-output` | `JobOutput` | `offset` (negative = from end) + `limit` (default 200, max 1000), `stream`; display capped at 1000 lines / 120 KiB |
-| `job-wait` | `JobWait` loops | waits ≤ `timeout` s (default 60, max 600); returns the latest 200 lines |
+| `job-wait` | `JobWait` loops | waits ≤ `timeout` s (default 60, max 300); returns the latest 200 lines |
 | `job-kill` | `JobKill` | process-tree kill |
 | `job-stdin` | `JobStdin` | write/close a job's stdin |
 | `job-list` | `ListJobs` | id/state/exit/command |

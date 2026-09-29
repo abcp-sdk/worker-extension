@@ -179,13 +179,13 @@ tools:
         timeout:
           type: integer
           description: >-
-            Wall-clock deadline in seconds (max 600). At expiry the worker
+            Wall-clock deadline in seconds (max 300). At expiry the worker
             kills the job's whole process tree (state becomes killed) while
             KEEPING the recorded output — cleaner than wrapping the command in
             `timeout`, which swallows output. Omit for no deadline.
           descriptions:
             zh: >-
-              墙钟截止秒数（最大 600）。到点后 worker 杀死整个进程树（状态变为
+              墙钟截止秒数（最大 300）。到点后 worker 杀死整个进程树（状态变为
               killed）并保留已记录的输出——比在外层包 `timeout` 命令更干净（后者会吞掉输出）。省略表示不限时。
         env:
           type: object
@@ -266,9 +266,9 @@ tools:
             zh: 后台任务 id。
         timeout:
           type: integer
-          description: Wait ceiling in seconds (default 60, max 600).
+          description: Wait ceiling in seconds (default 60, max 300).
           descriptions:
-            zh: 等待上限（秒，默认 60，最大 600）。
+            zh: 等待上限（秒，默认 60，最大 300）。
       required: [job-id]
     required_config: [sandboxes]
 
