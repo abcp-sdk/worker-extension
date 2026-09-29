@@ -258,18 +258,18 @@ describe('write', () => {
   })
 })
 
-describe('edit (anchor lines)', () => {
+describe('edit (anchor lines + anchor content)', () => {
   const decode = (f: Record<string, Uint8Array>) =>
     new TextDecoder().decode(f['a.txt'])
 
   it('replaces the lines strictly between the two anchors', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n4') }
-    const ctx = fileCtx(files)
-    // replace lines 2..3: above=1, below=4
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 4,
+      'start-anchor': '1',
+      'end-anchor': '4',
       content: 'X',
     })
     expect(decode(files)).toBe('1\nX\n4')
@@ -277,66 +277,70 @@ describe('edit (anchor lines)', () => {
 
   it('inserts between two adjacent anchors (27/28 style)', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
-    const ctx = fileCtx(files)
-    // insert between line 1 and line 2 -> start 1, end 2
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 2,
+      'start-anchor': '1',
+      'end-anchor': '2',
       content: 'X',
     })
     expect(decode(files)).toBe('1\nX\n2\n3')
   })
 
-  it('prepends at the head with start-anchor-line 0', async () => {
+  it('prepends at the head with start-anchor-line 0 (empty start-anchor)', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 0,
       'end-anchor-line': 1,
+      'start-anchor': '',
+      'end-anchor': '1',
       content: 'HEAD',
     })
     expect(decode(files)).toBe('HEAD\n1\n2\n3')
   })
 
-  it('accepts an empty string as the head sentinel', async () => {
+  it('accepts an empty string as the head sentinel line', async () => {
     const files = { 'a.txt': enc('1\n2') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': '',
       'end-anchor-line': 1,
+      'start-anchor': '',
+      'end-anchor': '1',
       content: 'HEAD',
     })
     expect(decode(files)).toBe('HEAD\n1\n2')
   })
 
-  it('appends at the tail with end-anchor-line total+1', async () => {
+  it('appends at the tail with end-anchor-line total+1 (empty end-anchor)', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 3,
       'end-anchor-line': 4,
+      'start-anchor': '3',
+      'end-anchor': '',
       content: 'TAIL',
     })
     expect(decode(files)).toBe('1\n2\n3\nTAIL')
   })
 
-  it('accepts an empty string as the tail sentinel', async () => {
+  it('accepts an empty string as the tail sentinel line', async () => {
     const files = { 'a.txt': enc('1\n2') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 2,
       'end-anchor-line': '',
+      'start-anchor': '2',
+      'end-anchor': '',
       content: 'TAIL',
     })
     expect(decode(files)).toBe('1\n2\nTAIL')
   })
 
-  it('inserts into an empty file (start 0, end 1)', async () => {
+  it('inserts into an empty file (start 0, end 1, both anchors empty)', async () => {
     const files: Record<string, Uint8Array> = {}
     const ctx = fileCtx(files)
     await writeFile(ctx, { path: 'a.txt', content: '' })
@@ -344,6 +348,8 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 0,
       'end-anchor-line': 1,
+      'start-anchor': '',
+      'end-anchor': '',
       content: 'first',
     })
     expect(decode(files)).toBe('first')
@@ -351,11 +357,12 @@ describe('edit (anchor lines)', () => {
 
   it('deletes the region when content is empty', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n4') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 4,
+      'start-anchor': '1',
+      'end-anchor': '4',
       content: '',
     })
     expect(decode(files)).toBe('1\n4')
@@ -363,11 +370,12 @@ describe('edit (anchor lines)', () => {
 
   it('preserves the trailing newline', async () => {
     const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
-    const ctx = fileCtx(files)
-    await editFile(ctx, {
+    await editFile(fileCtx(files), {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 3,
+      'start-anchor': 'alpha',
+      'end-anchor': 'gamma',
       content: 'BETA',
     })
     expect(decode(files)).toBe('alpha\nBETA\ngamma\n')
@@ -381,6 +389,8 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 11,
       'end-anchor-line': 11,
+      'start-anchor': '',
+      'end-anchor': '',
       content: 'XXX',
     }).catch(e => e)
     expect(err).toBeInstanceOf(TypedToolError)
@@ -394,6 +404,8 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 5,
+      'start-anchor': '1',
+      'end-anchor': '',
       content: 'X',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('invalid_argument')
@@ -405,9 +417,71 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 2,
       'end-anchor-line': 2,
+      'start-anchor': '',
+      'end-anchor': '',
       content: 'X',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('invalid_argument')
+  })
+
+  it('requires all four anchor arguments', async () => {
+    const files = { 'a.txt': enc('1\n2\n3\n') }
+    for (const missing of ['start-anchor-line', 'end-anchor-line', 'start-anchor', 'end-anchor']) {
+      const args: Record<string, unknown> = {
+        path: 'a.txt',
+        'start-anchor-line': 1,
+        'end-anchor-line': 3,
+        'start-anchor': '1',
+        'end-anchor': '3',
+        content: 'X',
+      }
+      delete args[missing]
+      const err = await editFile(fileCtx(files), args).catch(e => e)
+      expect(err).toBeInstanceOf(TypedToolError)
+      expect((err as TypedToolError).code).toBe('invalid_argument')
+      expect(String(err)).toContain(missing)
+    }
+    expect(decode(files)).toBe('1\n2\n3\n')
+  })
+
+  it('refuses the edit when an anchor content does not match (no write)', async () => {
+    const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
+    const err = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      'start-anchor': 'WRONG',
+      'end-anchor': 'gamma',
+      content: 'X',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('retryable')
+    expect(decode(files)).toBe('alpha\nbeta\ngamma\n')
+  })
+
+  it('refuses the edit when a boundary line exists but its anchor is empty', async () => {
+    const files = { 'a.txt': enc('alpha\nbeta\n') }
+    const err = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      'start-anchor': '',
+      'end-anchor': '',
+      content: 'X',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('retryable')
+  })
+
+  it('refuses a non-empty anchor at a boundary line that does not exist', async () => {
+    const files = { 'a.txt': enc('1\n2\n') }
+    const err = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 0,
+      'end-anchor-line': 1,
+      'start-anchor': 'nope',
+      'end-anchor': '1',
+      content: 'X',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('retryable')
   })
 
   it('returns a unified diff in content', async () => {
@@ -416,6 +490,8 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 4,
+      'start-anchor': '1',
+      'end-anchor': '4',
       content: 'X',
     })
     expect(r.content).toContain('--- a/a.txt')
@@ -432,6 +508,8 @@ describe('edit (anchor lines)', () => {
       path: 'a.txt',
       'start-anchor-line': 1,
       'end-anchor-line': 3,
+      'start-anchor': '1',
+      'end-anchor': '3',
       content: '2',
     })
     expect(String(r.content)).toContain('No changes')

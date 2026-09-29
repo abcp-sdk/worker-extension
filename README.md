@@ -80,7 +80,7 @@ and resolves its sandbox from `sandboxes` at call time.
 |---|---|
 | `read` | text-only, `offset`/`limit` (default 200, max 1000), **line-numbered**, truncation marker; binary → error. Records the displayed lines as "seen" |
 | `write` | overwrite with full content; rejected over 120 KiB; returns the numbered **whole** file; marks the whole file as "seen" |
-| `edit` | anchor-line edit: `start-anchor-line`/`end-anchor-line` are the UNCHANGED lines just OUTSIDE the region (`0` = head, `total+1` = tail); the lines between them are replaced (empty region inserts, empty content deletes). Returns a summary + unified diff |
+| `edit` | anchor-line edit: `start-anchor-line`/`end-anchor-line` are the UNCHANGED lines just OUTSIDE the region (`0` = head, `total+1` = tail), and `start-anchor`/`end-anchor` are their current text (verified with trim; mismatch refuses). All four are required; the lines between them are replaced (empty region inserts, empty content deletes). Returns a summary + unified diff |
 | `list` | breadth-first tree levels 1..`depth` (default 3), `limit` default 200 / max 1000 |
 | `delete` / `move` / `copy` | path operations |
 | `download` | agent `file:<code>` → workspace path |
@@ -107,15 +107,22 @@ and resolves its sandbox from `sandboxes` at call time.
 ## Anchor-line edit
 
 `edit` edits by ANCHOR LINE NUMBERS. The edit region is the lines STRICTLY
-BETWEEN two anchors that are the UNCHANGED lines just outside it:
+BETWEEN two anchors that are the UNCHANGED lines just outside it. FOUR arguments
+are required:
 
 - `start-anchor-line`: the unchanged line ABOVE the region (`0` = the head).
 - `end-anchor-line`: the unchanged line BELOW the region (`total + 1` = the tail).
+- `start-anchor` / `end-anchor`: your copy of the CURRENT text of those two
+  anchor lines (from read output, prefix removed). Verified with `trim()`; a
+  mismatch (or an empty value where the line exists) refuses the edit
+  (`retryable`, no write). At a boundary that does not exist (`0` / `total + 1`)
+  pass an empty string.
 
-So insert between lines 27 and 28 with `27`/`28`; replace lines 28..29 with
-`27`/`30`; prepend with `0`/`1`; append with `total`/`total + 1`. An empty
-region inserts; empty `content` deletes. Out-of-range anchors are rejected
-(never clamped). There is no read-before-edit requirement.
+So insert between lines 27 and 28 with `27`/`28` (plus the two anchor texts);
+replace lines 28..29 with `27`/`30`; prepend with `0`/`1`; append with
+`total`/`total + 1`. An empty region inserts; empty `content` deletes.
+Out-of-range anchors are rejected (never clamped). There is no read-before-edit
+requirement.
 
 ## Configuration
 
