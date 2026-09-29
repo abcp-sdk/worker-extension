@@ -355,18 +355,16 @@ export function createWorkerConfig(
     },
   }
 
-  // Tool metadata comes from manifest.yaml; only `execute` is wired here. The
-  // lifecycle wiring is added AFTER manifestConfig (which does not produce it).
+  // Tool metadata comes from manifest.yaml; only `execute` is wired here.
   const cfg = manifestConfig(manifest, {
     handlers: Object.fromEntries(
       Object.entries(handlers).map(([k, v]) => [k, { execute: v }]),
     ),
   })
+  // React to `deleted` so the SDK still purges the session's projected vars
+  // (there is no other per-session state to clean now that read-before-edit is
+  // gone).
   cfg.lifecycle = ['deleted']
-  cfg.onLifecycle = async (ev, tenant) => {
-    if (ev.kind !== 'deleted') return
-    if (deps === undefined) return
-    await deps.clearEditState(tenant ?? '', ev.session_name).catch(() => {})
-  }
+  cfg.onLifecycle = async () => {}
   return cfg
 }

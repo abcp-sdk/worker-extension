@@ -80,7 +80,7 @@ and resolves its sandbox from `sandboxes` at call time.
 |---|---|
 | `read` | text-only, `offset`/`limit` (default 200, max 1000), **line-numbered**, truncation marker; binary → error. Records the displayed lines as "seen" |
 | `write` | overwrite with full content; rejected over 120 KiB; returns the numbered **whole** file; marks the whole file as "seen" |
-| `edit` | 1-based line edit; `end-line < start-line` inserts, else replaces `[start-line, end-line]`; out-of-range clamps; returns a summary + unified diff. Enforces **read-before-edit** |
+| `edit` | anchor-line edit: `start-anchor-line`/`end-anchor-line` are the UNCHANGED lines just OUTSIDE the region (`0` = head, `total+1` = tail); the lines between them are replaced (empty region inserts, empty content deletes). Returns a summary + unified diff |
 | `list` | breadth-first tree levels 1..`depth` (default 3), `limit` default 200 / max 1000 |
 | `delete` / `move` / `copy` | path operations |
 | `download` | agent `file:<code>` → workspace path |
@@ -104,19 +104,18 @@ and resolves its sandbox from `sandboxes` at call time.
 |---|---|
 | `list-sandboxes` | one line per sandbox: `name<TAB>os<TAB>a11y=yes|no`; `data.sandboxes:[{name,os,platform,a11y}]` |
 
-## Read-before-edit
+## Anchor-line edit
 
-`edit` is guarded so a session can only change what it has actually seen:
+`edit` edits by ANCHOR LINE NUMBERS. The edit region is the lines STRICTLY
+BETWEEN two anchors that are the UNCHANGED lines just outside it:
 
-- **Seen required.** A file must have been `read` (or `write`n) in this session
-  before it can be `edit`ed — otherwise `permission_denied`.
-- **Range-limited.** Only the line ranges the session has seen may be edited.
-- **Freshness.** If the file changed since that read, the edit is refused with
-  `retryable`.
-- **Invalidate on edit.** A successful edit clears the file's seen state.
+- `start-anchor-line`: the unchanged line ABOVE the region (`0` = the head).
+- `end-anchor-line`: the unchanged line BELOW the region (`total + 1` = the tail).
 
-State is one KV entry per `(tenant, session)` in the `worker-edit-state` bucket,
-keyed `t.<tenant>.<sessionToken>`.
+So insert between lines 27 and 28 with `27`/`28`; replace lines 28..29 with
+`27`/`30`; prepend with `0`/`1`; append with `total`/`total + 1`. An empty
+region inserts; empty `content` deletes. Out-of-range anchors are rejected
+(never clamped). There is no read-before-edit requirement.
 
 ## Configuration
 

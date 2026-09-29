@@ -1,7 +1,6 @@
 import { TypedToolError } from '@abc-protocol/sdk'
 import { describe, expect, it } from 'vitest'
 import type { WorkerClient } from '../src/client.js'
-import type { SessionEditState } from '../src/tools/edit-state.js'
 import {
   copyFile,
   deleteFile,
@@ -62,7 +61,6 @@ function fileCtx(
   files: Record<string, Uint8Array>,
   ingest?: (name: string, data: Uint8Array) => { code: string; mime: string },
 ): FileCtx {
-  let state: SessionEditState = {}
   return {
     client: fakeClient(files),
     tenant: 't1',
@@ -72,13 +70,6 @@ function fileCtx(
       ingestFile: async ({ name, data }) =>
         ingest?.(name, data) ?? { code: 'abc123', mime: 'text/plain' },
       getSessionVariable: async () => '',
-      loadEditState: async () => state,
-      saveEditState: async (_t, _s, next) => {
-        state = next
-      },
-      clearEditState: async () => {
-        state = {}
-      },
     },
   }
 }
@@ -267,308 +258,186 @@ describe('write', () => {
   })
 })
 
-describe('edit (read-before-edit guard)', () => {
+describe('edit (anchor lines)', () => {
   const decode = (f: Record<string, Uint8Array>) =>
     new TextDecoder().decode(f['a.txt'])
 
-  it('requires both anchor arguments to be present', async () => {
-    const files = { 'a.txt': enc('1\n2\n3\n') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    const err = await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-after': '3',
-    }).catch(e => e)
-    expect(err).toBeInstanceOf(TypedToolError)
-    expect((err as TypedToolError).code).toBe('invalid_argument')
-    expect(decode(files)).toBe('1\n2\n3\n')
-  })
-
-  it('refuses to edit a file that was never read', async () => {
-    const files = { 'a.txt': enc('1\n2\n3\n') }
-    const err = await editFile(fileCtx(files), {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    }).catch(e => e)
-    expect(err).toBeInstanceOf(TypedToolError)
-    expect((err as TypedToolError).code).toBe('permission_denied')
-    expect(String(err)).toContain('read')
-  })
-
-  it('allows editing only lines that were read', async () => {
-    const files = { 'a.txt': enc('1\n2\n3\n4\n5\n6\n') }
-    const ctx = fileCtx(files)
-    // read lines 2-3 only
-    await readFile(ctx, { path: 'a.txt', offset: 1, limit: 2 })
-    // editing line 5 must be refused (neighbors 4 and 6 match, but 5 is unseen)
-    const err = await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 5,
-      'end-line': 5,
-      content: 'X',
-      'anchor-before': '4',
-      'anchor-after': '6',
-    }).catch(e => e)
-    expect((err as TypedToolError).code).toBe('permission_denied')
-    expect(String(err)).toContain('2-3')
-    // editing lines 2-3 is allowed (neighbors 1 and 4)
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 3,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '4',
-    })
-    expect(decode(files)).toBe('1\nX\n4\n5\n6\n')
-  })
-
-  it('requires a re-read after a successful edit', async () => {
-    const files = { 'a.txt': enc('1\n2\n3\n') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    })
-    const err = await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'Y',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    }).catch(e => e)
-    expect((err as TypedToolError).code).toBe('permission_denied')
-    // re-read then edit works
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'Y',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    })
-    expect(decode(files)).toBe('1\nY\n3\n')
-  })
-
-  it('detects an external change since the read', async () => {
-    const files = { 'a.txt': enc('1\n2\n3\n') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    files['a.txt'] = enc('1\n2\nCHANGED\n') // e.g. an exec wrote it
-    const err = await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    }).catch(e => e)
-    expect((err as TypedToolError).code).toBe('retryable')
-  })
-
-  it('write marks the whole file seen (edit works without a read)', async () => {
-    const files: Record<string, Uint8Array> = {}
-    const ctx = fileCtx(files)
-    await writeFile(ctx, { path: 'a.txt', content: '1\n2\n3\n' })
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '3',
-    })
-    expect(decode(files)).toBe('1\nX\n3\n')
-  })
-
-  it('replaces an inclusive range (anchors are the outside neighbors)', async () => {
+  it('replaces the lines strictly between the two anchors', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n4') }
     const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
+    // replace lines 2..3: above=1, below=4
     await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 2,
-      'end-line': 3,
+      'start-anchor-line': 1,
+      'end-anchor-line': 4,
       content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '4',
     })
     expect(decode(files)).toBe('1\nX\n4')
   })
 
-  it('replaces regardless of the edited lines content (only neighbors matter)', async () => {
-    const files = { 'a.txt': enc('1\nwhatever\nanything\n4') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, {
-      path: 'a.txt',
-      'start-line': 2,
-      'end-line': 3,
-      content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '4',
-    })
-    expect(decode(files)).toBe('1\nX\n4')
-  })
-
-  it('inserts when end-line === start-line - 1', async () => {
+  it('inserts between two adjacent anchors (27/28 style)', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
     const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    // Insert between line 1 and line 2: above=line1, below=line2.
+    // insert between line 1 and line 2 -> start 1, end 2
     await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 2,
-      'end-line': 1,
+      'start-anchor-line': 1,
+      'end-anchor-line': 2,
       content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '2',
     })
     expect(decode(files)).toBe('1\nX\n2\n3')
   })
 
-  it('inserts at the head (anchor-before is empty)', async () => {
+  it('prepends at the head with start-anchor-line 0', async () => {
     const files = { 'a.txt': enc('1\n2\n3') }
     const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
     await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 1,
-      'end-line': 0,
+      'start-anchor-line': 0,
+      'end-anchor-line': 1,
       content: 'HEAD',
-      'anchor-before': '',
-      'anchor-after': '1',
     })
     expect(decode(files)).toBe('HEAD\n1\n2\n3')
   })
 
-  it('appends at the tail (anchor-after is empty)', async () => {
-    const files = { 'a.txt': enc('1\n2\n3') }
+  it('accepts an empty string as the head sentinel', async () => {
+    const files = { 'a.txt': enc('1\n2') }
     const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
     await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 4,
-      'end-line': 3,
+      'start-anchor-line': '',
+      'end-anchor-line': 1,
+      content: 'HEAD',
+    })
+    expect(decode(files)).toBe('HEAD\n1\n2')
+  })
+
+  it('appends at the tail with end-anchor-line total+1', async () => {
+    const files = { 'a.txt': enc('1\n2\n3') }
+    const ctx = fileCtx(files)
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-anchor-line': 3,
+      'end-anchor-line': 4,
       content: 'TAIL',
-      'anchor-before': '3',
-      'anchor-after': '',
     })
     expect(decode(files)).toBe('1\n2\n3\nTAIL')
   })
 
-  it('inserts into an empty file (both anchors empty)', async () => {
+  it('accepts an empty string as the tail sentinel', async () => {
+    const files = { 'a.txt': enc('1\n2') }
+    const ctx = fileCtx(files)
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-anchor-line': 2,
+      'end-anchor-line': '',
+      content: 'TAIL',
+    })
+    expect(decode(files)).toBe('1\n2\nTAIL')
+  })
+
+  it('inserts into an empty file (start 0, end 1)', async () => {
     const files: Record<string, Uint8Array> = {}
     const ctx = fileCtx(files)
     await writeFile(ctx, { path: 'a.txt', content: '' })
     await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 1,
-      'end-line': 0,
+      'start-anchor-line': 0,
+      'end-anchor-line': 1,
       content: 'first',
-      'anchor-before': '',
-      'anchor-after': '',
     })
     expect(decode(files)).toBe('first')
   })
 
-  it('rejects a mismatched neighbor anchor (no write)', async () => {
-    const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
+  it('deletes the region when content is empty', async () => {
+    const files = { 'a.txt': enc('1\n2\n3\n4') }
     const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    // Replace line 2; neighbors are line1='alpha' and line3='gamma'.
-    const err = await editFile(ctx, {
+    await editFile(ctx, {
       path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'X',
-      'anchor-before': 'WRONG',
-      'anchor-after': 'gamma',
-    }).catch(e => e)
-    expect((err as TypedToolError).code).toBe('retryable')
-    expect(decode(files)).toBe('alpha\nbeta\ngamma\n')
+      'start-anchor-line': 1,
+      'end-anchor-line': 4,
+      content: '',
+    })
+    expect(decode(files)).toBe('1\n4')
   })
 
-  it('rejects out-of-range line numbers instead of clamping', async () => {
+  it('preserves the trailing newline', async () => {
+    const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
+    const ctx = fileCtx(files)
+    await editFile(ctx, {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      content: 'BETA',
+    })
+    expect(decode(files)).toBe('alpha\nBETA\ngamma\n')
+  })
+
+  it('rejects an out-of-range start anchor instead of clamping', async () => {
     const ten =
       Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
     const files = { 'a.txt': enc(ten) }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    const err = await editFile(ctx, {
+    const err = await editFile(fileCtx(files), {
       path: 'a.txt',
-      'start-line': 10,
-      'end-line': 12,
+      'start-anchor-line': 11,
+      'end-anchor-line': 11,
       content: 'XXX',
-      'anchor-before': 'L9',
-      'anchor-after': '',
     }).catch(e => e)
     expect(err).toBeInstanceOf(TypedToolError)
     expect((err as TypedToolError).code).toBe('invalid_argument')
     expect(decode(files)).toBe(ten)
   })
 
-  it('preserves the trailing newline', async () => {
-    const files = { 'a.txt': enc('alpha\nbeta\ngamma\n') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, {
+  it('rejects an out-of-range end anchor', async () => {
+    const files = { 'a.txt': enc('1\n2\n3\n') }
+    const err = await editFile(fileCtx(files), {
       path: 'a.txt',
-      'start-line': 2,
-      'end-line': 2,
-      content: 'BETA',
-      'anchor-before': 'alpha',
-      'anchor-after': 'gamma',
-    })
-    expect(decode(files)).toBe('alpha\nBETA\ngamma\n')
+      'start-anchor-line': 1,
+      'end-anchor-line': 5,
+      content: 'X',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('invalid_argument')
+  })
+
+  it('rejects an inverted anchor pair (end <= start)', async () => {
+    const files = { 'a.txt': enc('1\n2\n3\n') }
+    const err = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 2,
+      'end-anchor-line': 2,
+      content: 'X',
+    }).catch(e => e)
+    expect((err as TypedToolError).code).toBe('invalid_argument')
   })
 
   it('returns a unified diff in content', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n4') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    const r = await editFile(ctx, {
+    const r = await editFile(fileCtx(files), {
       path: 'a.txt',
-      'start-line': 2,
-      'end-line': 3,
+      'start-anchor-line': 1,
+      'end-anchor-line': 4,
       content: 'X',
-      'anchor-before': '1',
-      'anchor-after': '4',
     })
     expect(r.content).toContain('--- a/a.txt')
     expect(r.content).toContain('+++ b/a.txt')
-    expect(r.content).toContain('@@ -1,4 +1,3 @@')
     expect(r.content).toContain('-2')
     expect(r.content).toContain('-3')
     expect(r.content).toContain('+X')
     expect(r.data).toMatchObject({ added: 1, removed: 2 })
   })
 
-  it('reports no changes when the edit is a no-op (replay)', async () => {
+  it('reports no changes when the edit is a no-op', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n') }
-    const ctx = fileCtx(files)
-    await readFile(ctx, { path: 'a.txt' })
-    await editFile(ctx, { path: 'a.txt', 'start-line': 2, 'end-line': 2, content: 'X', 'anchor-before': '1', 'anchor-after': '3' })
-    await readFile(ctx, { path: 'a.txt' })
-    const r = await editFile(ctx, { path: 'a.txt', 'start-line': 2, 'end-line': 2, content: 'X', 'anchor-before': '1', 'anchor-after': '3' })
+    const r = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      content: '2',
+    })
     expect(String(r.content)).toContain('No changes')
-    expect(decode(files)).toBe('1\nX\n3\n')
   })
 })
+
 
 describe('upload', () => {
   it('routes bytes through ingest with a default name', async () => {
