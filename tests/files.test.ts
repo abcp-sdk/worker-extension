@@ -12,6 +12,7 @@ import {
   writeFile,
 } from '../src/tools/files.js'
 import {
+  checkAnchor,
   expandTilde,
   joinFileLines,
   looksTextual,
@@ -123,6 +124,34 @@ describe('text helpers', () => {
 
   it('drops a BOM from splitLines so line numbers stay aligned', () => {
     expect(splitLines('\uFEFFfirst\nsecond')).toEqual(['first', 'second'])
+  })
+
+  it('validates anchors, treating a blank line as an empty anchor', () => {
+    const lines = ['alpha', '', 'beta'] // line 2 is blank
+    // blank line + "" is a match (the bug fix)
+    expect(checkAnchor(lines, 2, '', 3)).toEqual({ ok: true })
+    // blank line + non-empty text is a mismatch
+    expect(checkAnchor(lines, 2, 'x', 3)).toEqual({
+      ok: false,
+      reason: 'mismatch',
+      actual: '',
+      expected: 'x',
+    })
+    // non-blank line + "" is a mismatch (expected empty)
+    expect(checkAnchor(lines, 1, '', 3)).toEqual({
+      ok: false,
+      reason: 'mismatch',
+      actual: 'alpha',
+      expected: '',
+    })
+    // correct text matches; whitespace-only differences are tolerated
+    expect(checkAnchor(lines, 1, '  alpha  ', 3)).toEqual({ ok: true })
+    // non-existent boundary requires ""
+    expect(checkAnchor(lines, 0, '', 3)).toEqual({ ok: true })
+    expect(checkAnchor(lines, 0, 'x', 3)).toEqual({
+      ok: false,
+      reason: 'outOfRange',
+    })
   })
 
   it('expands a leading ~ against home (falls back to workspace)', () => {
@@ -527,7 +556,7 @@ describe('edit (anchor lines + anchor content)', () => {
     expect(decode(files)).toBe('alpha\nbeta\ngamma\n')
   })
 
-  it('refuses the edit when a boundary line exists but its anchor is empty', async () => {
+  it('refuses the edit when a non-blank anchor line is given an empty anchor', async () => {
     const files = { 'a.txt': enc('alpha\nbeta\n') }
     const err = await editFile(fileCtx(files), {
       path: 'a.txt',
@@ -538,6 +567,21 @@ describe('edit (anchor lines + anchor content)', () => {
       content: 'X',
     }).catch(e => e)
     expect((err as TypedToolError).code).toBe('retryable')
+  })
+
+  it('accepts an empty anchor when the anchor line itself is blank', async () => {
+    // line 2 is a blank line; editing line 3 anchors on lines 2 (blank) and 4 (tail).
+    const files = { 'a.txt': enc('alpha\n\nbeta\n') }
+    const r = await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 2,
+      'end-anchor-line': 4,
+      'start-anchor': '',
+      'end-anchor': '',
+      content: 'BETA',
+    })
+    expect(String(r.content)).toContain('Edited')
+    expect(decode(files)).toBe('alpha\n\nBETA\n')
   })
 
   it('refuses a non-empty anchor at a boundary line that does not exist', async () => {
