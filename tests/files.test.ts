@@ -13,9 +13,11 @@ import {
 } from '../src/tools/files.js'
 import {
   expandTilde,
+  joinFileLines,
   looksTextual,
   numberLines,
   splitLines,
+  toFileLines,
   windowLines,
 } from '../src/tools/text.js'
 
@@ -55,7 +57,8 @@ function fakeClient(files: Record<string, Uint8Array>): WorkerClient {
   } as unknown as WorkerClient
 }
 
-const decode = (b: Uint8Array) => new TextDecoder('utf-8').decode(b)
+const decode = (b: Uint8Array) =>
+  new TextDecoder('utf-8', { ignoreBOM: true }).decode(b)
 
 function fileCtx(
   files: Record<string, Uint8Array>,
@@ -95,6 +98,31 @@ describe('text helpers', () => {
 
   it('numbers lines from an absolute start', () => {
     expect(numberLines(['x', 'y'], 10)).toEqual(['10  x', '11  y'])
+  })
+
+  it('round-trips CRLF and BOM through toFileLines/joinFileLines', () => {
+    const lf = toFileLines('a\nb\n')
+    expect(lf.eol).toBe('\n')
+    expect(lf.bom).toBe(false)
+    expect(joinFileLines(lf)).toBe('a\nb\n')
+
+    const crlf = toFileLines('a\r\nb\r\n')
+    expect(crlf.eol).toBe('\r\n')
+    expect(crlf.lines).toEqual(['a', 'b'])
+    expect(joinFileLines(crlf)).toBe('a\r\nb\r\n')
+
+    const bom = toFileLines('\uFEFFa\nb')
+    expect(bom.bom).toBe(true)
+    expect(bom.lines).toEqual(['a', 'b'])
+    expect(joinFileLines(bom)).toBe('\uFEFFa\nb')
+
+    expect(joinFileLines(toFileLines('\uFEFFa\r\nb\r\n'))).toBe(
+      '\uFEFFa\r\nb\r\n',
+    )
+  })
+
+  it('drops a BOM from splitLines so line numbers stay aligned', () => {
+    expect(splitLines('\uFEFFfirst\nsecond')).toEqual(['first', 'second'])
   })
 
   it('expands a leading ~ against home (falls back to workspace)', () => {
@@ -143,14 +171,11 @@ describe('read', () => {
     let seenReq: { startLine?: number; endLine?: number } | null = null
     const ctx = fileCtx(files)
     const orig = ctx.client.fileRead
-    ;(ctx.client as unknown as { fileRead: typeof orig }).fileRead = (async (req: {
-      path: string
-      startLine?: number
-      endLine?: number
-    }) => {
-      seenReq = { startLine: req.startLine, endLine: req.endLine }
-      return orig(req as never)
-    }) as typeof orig
+    ;(ctx.client as unknown as { fileRead: typeof orig }).fileRead =
+      (async (req: { path: string; startLine?: number; endLine?: number }) => {
+        seenReq = { startLine: req.startLine, endLine: req.endLine }
+        return orig(req as never)
+      }) as typeof orig
     const r = await readFile(ctx, { path: 'big.txt', offset: 100, limit: 200 })
     // The worker was asked for exactly [100, 300), not the whole 5000 lines.
     expect(seenReq).toEqual({ startLine: 100, endLine: 300 })
@@ -260,7 +285,7 @@ describe('write', () => {
 
 describe('edit (anchor lines + anchor content)', () => {
   const decode = (f: Record<string, Uint8Array>) =>
-    new TextDecoder().decode(f['a.txt'])
+    new TextDecoder('utf-8', { ignoreBOM: true }).decode(f['a.txt'])
 
   it('replaces the lines strictly between the two anchors', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n4') }
@@ -381,6 +406,45 @@ describe('edit (anchor lines + anchor content)', () => {
     expect(decode(files)).toBe('alpha\nBETA\ngamma\n')
   })
 
+  it('preserves CRLF line endings across an edit', async () => {
+    const files = { 'a.txt': enc('alpha\r\nbeta\r\ngamma\r\n') }
+    await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      'start-anchor': 'alpha',
+      'end-anchor': 'gamma',
+      content: 'BETA',
+    })
+    expect(decode(files)).toBe('alpha\r\nBETA\r\ngamma\r\n')
+  })
+
+  it('preserves a UTF-8 BOM across an edit', async () => {
+    const files = { 'a.txt': enc('\uFEFFalpha\nbeta\ngamma\n') }
+    await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      'start-anchor': 'alpha',
+      'end-anchor': 'gamma',
+      content: 'BETA',
+    })
+    expect(decode(files)).toBe('\uFEFFalpha\nBETA\ngamma\n')
+  })
+
+  it('preserves CRLF + BOM together', async () => {
+    const files = { 'a.txt': enc('\uFEFFalpha\r\nbeta\r\ngamma\r\n') }
+    await editFile(fileCtx(files), {
+      path: 'a.txt',
+      'start-anchor-line': 1,
+      'end-anchor-line': 3,
+      'start-anchor': 'alpha',
+      'end-anchor': 'gamma',
+      content: 'BETA',
+    })
+    expect(decode(files)).toBe('\uFEFFalpha\r\nBETA\r\ngamma\r\n')
+  })
+
   it('rejects an out-of-range start anchor instead of clamping', async () => {
     const ten =
       Array.from({ length: 10 }, (_, i) => `L${i + 1}`).join('\n') + '\n'
@@ -426,7 +490,12 @@ describe('edit (anchor lines + anchor content)', () => {
 
   it('requires all four anchor arguments', async () => {
     const files = { 'a.txt': enc('1\n2\n3\n') }
-    for (const missing of ['start-anchor-line', 'end-anchor-line', 'start-anchor', 'end-anchor']) {
+    for (const missing of [
+      'start-anchor-line',
+      'end-anchor-line',
+      'start-anchor',
+      'end-anchor',
+    ]) {
       const args: Record<string, unknown> = {
         path: 'a.txt',
         'start-anchor-line': 1,
@@ -515,7 +584,6 @@ describe('edit (anchor lines + anchor content)', () => {
     expect(String(r.content)).toContain('No changes')
   })
 })
-
 
 describe('upload', () => {
   it('routes bytes through ingest with a default name', async () => {
